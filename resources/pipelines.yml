@@ -52,4 +52,28 @@ resources:
         - level: CAN_VIEW
           group_name: users
 
-    # TODO Phase 2: Add regulatory_pipeline
+    regulatory_pipeline:
+      name: "Meridian Regulatory Pipeline"
+      run_as:
+        user_name: ${workspace.current_user.userName}
+      catalog: ${var.catalog_name}
+      target: "meridian_regulatory"
+      development: true
+      channel: PREVIEW
+      serverless: true
+      libraries:
+        - notebook:
+            path: ../src/pipelines/regulatory/bronze_sec_filings.py
+        - notebook:
+            path: ../src/pipelines/regulatory/bronze_fda_actions.py
+        - notebook:
+            path: ../src/pipelines/regulatory/bronze_patents.py
+        - notebook:
+            path: ../src/pipelines/regulatory/silver_regulatory.py
+        - notebook:
+            path: ../src/pipelines/regulatory/gold_regulatory.py
+      configuration:
+        meridian.catalog: ${var.catalog_name}
+      permissions:
+        - level: CAN_VIEW
+          group_name: users

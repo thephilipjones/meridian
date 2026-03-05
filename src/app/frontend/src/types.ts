@@ -81,3 +81,36 @@ export interface CustomerHealth {
   health_score: number;
   health_tier: string;
 }
+
+export interface DataProduct {
+  table_name: string;
+  comment: string | null;
+  last_altered: string | null;
+  column_count: number;
+  is_subscribed: boolean;
+  freshness?: string;
+}
+
+export interface DataProductDetail {
+  table_name: string;
+  is_subscribed: boolean;
+  schema: { column_name: string; data_type: string; comment: string | null }[];
+  sample_rows: Record<string, unknown>[];
+  row_count: number;
+}
+
+export interface ConnectionInfo {
+  share_name: string;
+  provider: string;
+  provider_endpoint: string;
+  recipient_name: string;
+  shared_tables: { schema: string; table: string; description: string }[];
+  activation_status: string;
+  instructions: string;
+}
+
+export interface CodeSnippet {
+  label: string;
+  language: string;
+  code: string;
+}

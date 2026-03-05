@@ -16,7 +16,7 @@ env:
   - name: RESEARCH_GENIE_SPACE_ID
     value: "01f118c5d7e01a32a58159a70e55160c"
   - name: REGULATORY_GENIE_SPACE_ID
-    value: ""
+    value: "01f118ce34db1cfeb9085c37cea33f8d"
   - name: INTERNAL_GENIE_SPACE_ID
     value: "01f118c5ddb81e3dba76005e6020b2bc"
 

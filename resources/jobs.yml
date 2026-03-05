@@ -39,6 +39,21 @@ resources:
             notebook_path: ../src/data_gen/generate_pubmed.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+        - task_key: gen_sec_filings
+          notebook_task:
+            notebook_path: ../src/data_gen/generate_sec_filings.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+        - task_key: gen_fda_actions
+          notebook_task:
+            notebook_path: ../src/data_gen/generate_fda_actions.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+        - task_key: gen_patents
+          notebook_task:
+            notebook_path: ../src/data_gen/generate_patents.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
       permissions:
         - level: CAN_MANAGE
           group_name: users
@@ -68,6 +83,9 @@ resources:
         - task_key: run_internal
           pipeline_task:
             pipeline_id: ${resources.pipelines.internal_pipeline.id}
+        - task_key: run_regulatory
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.regulatory_pipeline.id}
         - task_key: create_metric_views
           notebook_task:
             notebook_path: ../src/notebooks/04_metric_views.py

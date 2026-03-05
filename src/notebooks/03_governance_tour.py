@@ -140,34 +140,132 @@ display(spark.sql(f"""
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## 5. Row-Level Security (Phase 2)
+# MAGIC ## 5. Row-Level Security & Column Masks
 # MAGIC
-# MAGIC Gold tables include a `subscription_tier` or `access_group` column.
-# MAGIC Row filters restrict external customer profiles to their entitled rows.
+# MAGIC Gold tables include a `subscription_tier` column. Row filters
+# MAGIC restrict external customer profiles to their entitled rows, while
+# MAGIC column masks hide internal scoring fields from external users.
 # MAGIC
-# MAGIC ```sql
-# MAGIC -- Example: restrict regulatory data by subscription tier
-# MAGIC ALTER TABLE meridian.regulatory.regulatory_actions
-# MAGIC SET ROW FILTER meridian.internal.tier_filter ON (subscription_tier);
+# MAGIC > *"James at Acme Bank subscribed to SEC data only. He sees SEC
+# MAGIC > filings but not FDA recalls — and he can't see internal risk
+# MAGIC > scores that Meridian uses for pricing decisions."*
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 5a. Create the Row Filter Function
 # MAGIC
-# MAGIC -- Example: mask internal scoring fields for external profiles
-# MAGIC ALTER TABLE meridian.regulatory.company_risk_signals
-# MAGIC SET COLUMN MASK meridian.internal.mask_internal_score ON (internal_score);
-# MAGIC ```
+# MAGIC The filter grants full access to members of the `meridian_internal`
+# MAGIC group and restricts everyone else to their subscription tier.
+
+# COMMAND ----------
+
+spark.sql(f"""
+    CREATE OR REPLACE FUNCTION {catalog}.meridian_regulatory.tier_row_filter(tier STRING)
+    RETURNS BOOLEAN
+    RETURN
+        IS_ACCOUNT_GROUP_MEMBER('meridian_internal')
+        OR tier = 'sec_only'
+""")
+print("Row filter function created")
+
+# COMMAND ----------
+
+# Apply the row filter to regulatory_actions
+spark.sql(f"""
+    ALTER TABLE {catalog}.meridian_regulatory.regulatory_actions
+    SET ROW FILTER {catalog}.meridian_regulatory.tier_row_filter
+    ON (subscription_tier)
+""")
+print("Row filter applied to regulatory_actions")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 5b. Demonstrate Row-Level Security
+# MAGIC
+# MAGIC As an internal user (member of `meridian_internal`), you see all rows.
+# MAGIC An external user with `sec_only` tier would only see SEC actions.
+
+# COMMAND ----------
+
+# Full view — internal user sees everything
+display(spark.sql(f"""
+    FROM {catalog}.meridian_regulatory.regulatory_actions
+    |> AGGREGATE COUNT(*) AS total_rows,
+       COUNT_IF(action_source = 'SEC') AS sec_rows,
+       COUNT_IF(action_source = 'FDA') AS fda_rows
+"""))
+
+# COMMAND ----------
+
+# Simulated external view — only sec_only tier visible
+display(spark.sql(f"""
+    FROM {catalog}.meridian_regulatory.regulatory_actions
+    |> WHERE subscription_tier = 'sec_only'
+    |> AGGREGATE COUNT(*) AS visible_rows,
+       COUNT_IF(action_source = 'SEC') AS sec_rows,
+       COUNT_IF(action_source = 'FDA') AS fda_rows
+"""))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 5c. Create a Column Mask
+# MAGIC
+# MAGIC The `internal_score` on `company_risk_signals` is a proprietary
+# MAGIC metric used for pricing. External users see it as NULL.
+
+# COMMAND ----------
+
+spark.sql(f"""
+    CREATE OR REPLACE FUNCTION {catalog}.meridian_regulatory.mask_internal_score(score DOUBLE)
+    RETURNS DOUBLE
+    RETURN
+        CASE WHEN IS_ACCOUNT_GROUP_MEMBER('meridian_internal')
+            THEN score
+            ELSE NULL
+        END
+""")
+print("Column mask function created")
+
+# COMMAND ----------
+
+spark.sql(f"""
+    ALTER TABLE {catalog}.meridian_regulatory.company_risk_signals
+    SET COLUMN MASK {catalog}.meridian_regulatory.mask_internal_score
+    ON (internal_score)
+""")
+print("Column mask applied to company_risk_signals.internal_score")
+
+# COMMAND ----------
+
+# Internal user sees the actual score; external user would see NULL
+display(spark.sql(f"""
+    FROM {catalog}.meridian_regulatory.company_risk_signals
+    |> SELECT company_name, risk_tier, internal_score, total_actions, patent_count
+    |> ORDER BY internal_score DESC
+    |> LIMIT 10
+"""))
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## 6. System Tables — Audit & Consumption (Phase 2)
+# MAGIC ## 6. System Tables — Audit & Consumption
 # MAGIC
 # MAGIC System tables provide meta-analytics: who queried what, when,
 # MAGIC and how much compute was consumed. Enables Meridian to answer
-# MAGIC questions like "Which customers queried the most data products?"
+# MAGIC questions like "Which users queried the most data products?"
 
 # COMMAND ----------
 
-# Preview audit log for the meridian catalog
+# MAGIC %md
+# MAGIC ### 6a. Audit Log — Query Activity
+
+# COMMAND ----------
+
+# Who has been querying Meridian data in the last 7 days?
 display(spark.sql(f"""
     FROM system.access.audit
     |> WHERE request_params.catalog_name = '{catalog}'
@@ -177,3 +275,58 @@ display(spark.sql(f"""
     |> ORDER BY query_count DESC
     |> LIMIT 20
 """))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 6b. Audit — Table-Level Access Patterns
+
+# COMMAND ----------
+
+# Which tables are queried most often?
+display(spark.sql(f"""
+    FROM system.access.audit
+    |> WHERE request_params.catalog_name = '{catalog}'
+           AND event_date >= CURRENT_DATE - INTERVAL 7 DAYS
+           AND action_name IN ('commandSubmit', 'sqlStatement')
+    |> AGGREGATE COUNT(*) AS access_count
+       GROUP BY request_params.schema_name, request_params.table_name
+    |> WHERE request_params.table_name IS NOT NULL
+    |> ORDER BY access_count DESC
+    |> LIMIT 20
+"""))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 6c. Billing — Compute Consumption
+
+# COMMAND ----------
+
+# How much compute has the meridian catalog consumed?
+display(spark.sql(f"""
+    FROM system.billing.usage
+    |> WHERE usage_date >= CURRENT_DATE - INTERVAL 30 DAYS
+    |> AGGREGATE
+       SUM(usage_quantity) AS total_dbus,
+       COUNT(DISTINCT usage_date) AS active_days
+       GROUP BY sku_name, usage_unit
+    |> ORDER BY total_dbus DESC
+    |> LIMIT 15
+"""))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## Summary
+# MAGIC
+# MAGIC | Feature | What it does | Demo moment |
+# MAGIC |---------|-------------|-------------|
+# MAGIC | **Tags** | Business context on every asset | "Find all gold data products" |
+# MAGIC | **Lineage** | Automatic source-to-product tracing | "Trace this record to the raw SEC filing" |
+# MAGIC | **Metric Views** | Governed KPI definitions | "Same metric in Genie, dashboard, and SQL" |
+# MAGIC | **Liquid Clustering** | Zero-maintenance layout | "No partition columns to guess" |
+# MAGIC | **Row Filters** | Subscription-tier data access | "James sees SEC, not FDA" |
+# MAGIC | **Column Masks** | Hide internal fields from externals | "Pricing scores stay internal" |
+# MAGIC | **System Tables** | Audit trail + consumption tracking | "Who queried what, and how much did it cost?" |
