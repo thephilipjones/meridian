@@ -45,6 +45,17 @@ def health_check():
     return {"status": "ok", "app": "meridian-portal"}
 
 
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend" / "dist"
-if FRONTEND_DIR.exists():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+def _find_frontend_dist() -> Path | None:
+    candidates = [
+        Path(__file__).parent.parent / "frontend" / "dist",
+        Path.cwd() / "frontend" / "dist",
+    ]
+    for p in candidates:
+        if p.exists() and (p / "index.html").exists():
+            return p
+    return None
+
+
+_dist = _find_frontend_dist()
+if _dist:
+    app.mount("/", StaticFiles(directory=str(_dist), html=True), name="frontend")
