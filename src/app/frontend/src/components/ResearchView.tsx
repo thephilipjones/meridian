@@ -1,6 +1,4 @@
 import PaperBrowser from "./PaperBrowser";
-import CitationExplorer from "./CitationExplorer";
-import GenieEmbed from "./GenieEmbed";
 import { useState } from "react";
 import type { Article } from "../types";
 
@@ -134,8 +132,6 @@ export default function ResearchView({ activeTab }: Props) {
       return <ResearchQA />;
     case "Paper Browser":
       return <PaperBrowser />;
-    case "Citation Explorer":
-      return <CitationExplorer />;
     default:
       return <ResearchQA />;
   }

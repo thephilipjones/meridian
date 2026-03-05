@@ -87,6 +87,7 @@ class Tables:
     CLEANED_DEALS = _fq(SCHEMA_INTERNAL, "cleaned_deals")
     CLEANED_WEB_EVENTS = _fq(SCHEMA_INTERNAL, "cleaned_web_events")
     CLEANED_FINANCIALS = _fq(SCHEMA_INTERNAL, "cleaned_financials")
+    QUARANTINE_INTERNAL = _fq(SCHEMA_INTERNAL, "quarantine_internal")
 
     SALES_PIPELINE = _fq(SCHEMA_INTERNAL, "sales_pipeline")
     PRODUCT_USAGE = _fq(SCHEMA_INTERNAL, "product_usage")

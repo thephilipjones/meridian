@@ -4,13 +4,13 @@ Streaming table with schema enforcement. Raw data lands as-is with
 ingest metadata (_ingest_timestamp, _source_file).
 """
 
-import dlt
+import databricks.declarative_pipelines as dp
 from pyspark.sql import functions as F
 
 from src.common.config import CATALOG, SCHEMA_STAGING
 
 
-@dlt.table(
+@dp.table(
     name="raw_pubmed_articles",
     comment="Raw PubMed article metadata ingested via Auto Loader from staging volume",
     table_properties={

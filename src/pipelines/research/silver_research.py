@@ -5,12 +5,12 @@ deduplicates by DOI. Failed rows are quarantined. Expectations enforce
 data quality gates.
 """
 
-import dlt
+import databricks.declarative_pipelines as dp
 from pyspark.sql import functions as F
 from pyspark.sql.types import ArrayType, StringType
 
 
-@dlt.table(
+@dp.table(
     name="cleaned_articles",
     comment="Cleansed and normalized research articles from all sources (PubMed, arXiv, Crossref)",
     table_properties={
@@ -18,12 +18,12 @@ from pyspark.sql.types import ArrayType, StringType
         "meridian.business_unit": "research",
     },
 )
-@dlt.expect_or_quarantine("valid_title", "length(title) > 0", "quarantine_research")
-@dlt.expect_or_quarantine("valid_pub_date", "publication_date IS NOT NULL", "quarantine_research")
+@dp.expect_or_quarantine("valid_title", "length(title) > 0", "quarantine_research")
+@dp.expect_or_quarantine("valid_pub_date", "publication_date IS NOT NULL", "quarantine_research")
 def cleaned_articles():
-    pubmed = dlt.read("raw_pubmed_articles").withColumn("arxiv_id", F.lit(None).cast("string"))
+    pubmed = dp.read("raw_pubmed_articles").withColumn("arxiv_id", F.lit(None).cast("string"))
     arxiv = (
-        dlt.read("raw_arxiv_articles")
+        dp.read("raw_arxiv_articles")
         .withColumnRenamed("published_date", "publication_date")
         .withColumn("pmid", F.lit(None).cast("string"))
         .withColumn("journal", F.lit(None).cast("string"))
@@ -58,12 +58,12 @@ def cleaned_articles():
         .select(
             "article_id", "doi", "pmid", "arxiv_id", "title", "abstract",
             "journal", "publication_date", "publication_year", "source",
-            "is_preprint", "publication_type",
+            "is_preprint", "publication_type", "authors_raw", "mesh_terms_raw",
         )
     )
 
 
-@dlt.table(
+@dp.table(
     name="cleaned_authors",
     comment="Normalized author records linked to articles",
     table_properties={
@@ -72,7 +72,7 @@ def cleaned_articles():
     },
 )
 def cleaned_authors():
-    articles = dlt.read("cleaned_articles")
+    articles = dp.read("cleaned_articles")
     return (
         articles
         .filter(F.col("authors_raw").isNotNull())
@@ -94,7 +94,7 @@ def cleaned_authors():
     )
 
 
-@dlt.table(
+@dp.table(
     name="cleaned_citations",
     comment="[Phase 2] Citation links from Crossref — currently empty",
     table_properties={
@@ -109,7 +109,7 @@ def cleaned_citations():
     )
 
 
-@dlt.table(
+@dp.table(
     name="quarantine_research",
     comment="Quarantined research records that failed quality expectations",
     table_properties={

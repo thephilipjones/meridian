@@ -3,8 +3,12 @@
 Each profile represents a demo persona. The profile switcher in the frontend
 selects one of these; the backend uses the profile to determine which schemas
 and tables the current user can access, and which Genie space to embed.
+
+Genie space IDs are read from environment variables so they can be set
+after Genie space creation without modifying code.
 """
 
+import os
 from dataclasses import dataclass, field
 
 
@@ -31,7 +35,7 @@ PROFILES: dict[str, Profile] = {
         business_unit="internal",
         avatar_initials="SC",
         allowed_schemas=["internal", "regulatory", "research"],
-        genie_space_id=None,  # Set after Genie space creation
+        genie_space_id=os.environ.get("INTERNAL_GENIE_SPACE_ID"),
         nav_tabs=["Sales Dashboard", "Product Usage", "Genie"],
     ),
     "james": Profile(
@@ -42,7 +46,7 @@ PROFILES: dict[str, Profile] = {
         business_unit="regulatory",
         avatar_initials="JR",
         allowed_schemas=["regulatory"],
-        genie_space_id=None,  # TODO Phase 2: Set after Regulatory Genie creation
+        genie_space_id=os.environ.get("REGULATORY_GENIE_SPACE_ID"),
         nav_tabs=["Data Catalog", "Genie", "Connect Your Environment"],
         subscription_tier="sec_only",
     ),
@@ -54,8 +58,8 @@ PROFILES: dict[str, Profile] = {
         business_unit="research",
         avatar_initials="AP",
         allowed_schemas=["research"],
-        genie_space_id=None,  # Set after Research Genie creation
-        nav_tabs=["Research Q&A", "Paper Browser", "Citation Explorer"],
+        genie_space_id=os.environ.get("RESEARCH_GENIE_SPACE_ID"),
+        nav_tabs=["Research Q&A", "Paper Browser"],
     ),
 }
 
@@ -77,6 +81,7 @@ def get_all_profiles() -> list[dict]:
             "avatar_initials": p.avatar_initials,
             "nav_tabs": p.nav_tabs,
             "business_unit": p.business_unit,
+            "genie_space_id": p.genie_space_id,
         }
         for p in PROFILES.values()
     ]

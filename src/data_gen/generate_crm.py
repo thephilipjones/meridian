@@ -45,12 +45,12 @@ def generate_accounts(n: int) -> list[dict]:
 
 def generate_deals(accounts: list[dict], n: int) -> list[dict]:
     deals = []
-    base_date = datetime(2024, 3, 1)
+    base_date = datetime(2024, 2, 1)  # Aligns with FY2024 start
 
     for _ in range(n):
         account = random.choice(accounts)
         stage = random.choices(STAGES, weights=STAGE_WEIGHTS, k=1)[0]
-        created = base_date + timedelta(days=random.randint(0, 700))
+        created = base_date + timedelta(days=random.randint(0, 730))
         close_offset = random.randint(30, 180)
 
         is_closed = stage.startswith("Closed")

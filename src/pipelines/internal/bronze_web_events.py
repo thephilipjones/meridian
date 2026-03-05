@@ -4,13 +4,13 @@ Demonstrates the Auto Loader (cloudFiles) ingestion approach for
 high-volume JSON event streams.
 """
 
-import dlt
+import databricks.declarative_pipelines as dp
 from pyspark.sql import functions as F
 
 from src.common.config import CATALOG, SCHEMA_STAGING
 
 
-@dlt.table(
+@dp.table(
     name="raw_web_events",
     comment="Raw web analytics / API usage events ingested via Auto Loader",
     table_properties={

@@ -25,24 +25,37 @@ def get_articles(
     limit: int = Query(50, le=500),
 ):
     """Search and filter research articles."""
-    query = f"SELECT article_id, doi, title, journal, publication_date, publication_year, source, is_preprint, publication_type, citation_count FROM {_catalog}.research.articles WHERE 1=1"
+    clauses = []
+    params: dict = {}
+
     if search:
-        query += f" AND lower(search_text) LIKE '%{search.lower()}%'"
+        clauses.append("lower(search_text) LIKE %(search_pattern)s")
+        params["search_pattern"] = f"%{search.lower()}%"
     if publication_type:
-        query += f" AND publication_type = '{publication_type}'"
+        clauses.append("publication_type = %(publication_type)s")
+        params["publication_type"] = publication_type
     if year:
-        query += f" AND publication_year = {year}"
+        clauses.append("publication_year = %(year)s")
+        params["year"] = year
     if source:
-        query += f" AND source = '{source}'"
-    query += f" ORDER BY citation_count DESC, publication_year DESC LIMIT {limit}"
-    return execute_query(query)
+        clauses.append("source = %(source)s")
+        params["source"] = source
+
+    where = (" AND ".join(clauses)) if clauses else "1=1"
+    query = (
+        f"SELECT article_id, doi, title, journal, publication_date, publication_year, "
+        f"source, is_preprint, publication_type, citation_count "
+        f"FROM {_catalog}.research.articles WHERE {where} "
+        f"ORDER BY citation_count DESC, publication_year DESC LIMIT {int(limit)}"
+    )
+    return execute_query(query, params or None)
 
 
 @router.get("/articles/{article_id}")
 def get_article_detail(article_id: str):
     """Get full article details including abstract."""
-    query = f"SELECT * FROM {_catalog}.research.articles WHERE article_id = '{article_id}'"
-    results = execute_query(query)
+    query = f"SELECT * FROM {_catalog}.research.articles WHERE article_id = %(article_id)s"
+    results = execute_query(query, {"article_id": article_id})
     return results[0] if results else {"error": "Article not found"}
 
 
@@ -53,13 +66,19 @@ def get_authors(
     limit: int = Query(50, le=500),
 ):
     """Search authors by name or filter by h-index."""
-    query = f"SELECT * FROM {_catalog}.research.authors WHERE 1=1"
+    clauses = []
+    params: dict = {}
+
     if search:
-        query += f" AND lower(full_name) LIKE '%{search.lower()}%'"
+        clauses.append("lower(full_name) LIKE %(search_pattern)s")
+        params["search_pattern"] = f"%{search.lower()}%"
     if min_h_index:
-        query += f" AND h_index >= {min_h_index}"
-    query += f" ORDER BY h_index DESC, article_count DESC LIMIT {limit}"
-    return execute_query(query)
+        clauses.append("h_index >= %(min_h_index)s")
+        params["min_h_index"] = min_h_index
+
+    where = (" AND ".join(clauses)) if clauses else "1=1"
+    query = f"SELECT * FROM {_catalog}.research.authors WHERE {where} ORDER BY h_index DESC, article_count DESC LIMIT {int(limit)}"
+    return execute_query(query, params or None)
 
 
 @router.get("/search")
@@ -68,19 +87,18 @@ def search_articles(
     limit: int = Query(20, le=100),
 ):
     """Search articles using the optimized article_search table."""
-    query = f"""
-    SELECT article_id, doi, title, journal, publication_date, publication_year,
-           source, is_preprint, publication_type, citation_count
-    FROM {_catalog}.research.article_search
-    WHERE lower(search_text) LIKE '%{q.lower()}%'
-    ORDER BY citation_count DESC
-    LIMIT {limit}
-    """
-    return execute_query(query)
+    query = (
+        f"SELECT article_id, doi, title, journal, publication_date, publication_year, "
+        f"source, is_preprint, publication_type, citation_count "
+        f"FROM {_catalog}.research.article_search "
+        f"WHERE lower(search_text) LIKE %(search_pattern)s "
+        f"ORDER BY citation_count DESC LIMIT {int(limit)}"
+    )
+    return execute_query(query, {"search_pattern": f"%{q.lower()}%"})
 
 
 @router.get("/mesh-terms")
 def get_mesh_terms(limit: int = Query(50, le=500)):
     """Top MeSH terms by article count."""
-    query = f"SELECT * FROM {_catalog}.research.mesh_terms ORDER BY article_count DESC LIMIT {limit}"
+    query = f"SELECT * FROM {_catalog}.research.mesh_terms ORDER BY article_count DESC LIMIT {int(limit)}"
     return execute_query(query)

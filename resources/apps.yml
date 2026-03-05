@@ -1,0 +1,6 @@
+resources:
+  apps:
+    meridian_portal:
+      name: "meridian-portal"
+      description: "Meridian Insights Portal — unified data product platform for regulatory intelligence, research analytics, and internal operations"
+      source_code_path: ../src/app

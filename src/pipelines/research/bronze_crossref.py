@@ -5,13 +5,13 @@ Phase 2 stub — creates an empty streaming table with the correct schema.
 TODO Phase 2: Implement Auto Loader ingestion from Crossref staging volume
 """
 
-import dlt
+import databricks.declarative_pipelines as dp
 from pyspark.sql import functions as F
 
 from src.common.config import CATALOG, SCHEMA_STAGING
 
 
-@dlt.table(
+@dp.table(
     name="raw_crossref_metadata",
     comment="[Phase 2] Raw Crossref DOI metadata and citation references",
     table_properties={

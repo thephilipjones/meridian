@@ -1,6 +1,9 @@
 bundle:
   name: meridian-insights-demo
 
+include:
+  - resources/*.yml
+
 variables:
   catalog_name:
     description: Unity Catalog catalog name for all Meridian assets
@@ -19,7 +22,8 @@ targets:
     mode: development
     default: true
     workspace:
-      host: ${workspace.host}
+      host: https://fevm-serverless-stable-k2zkdm.cloud.databricks.com
+      profile: k2zkdm
 
   demo:
     workspace:

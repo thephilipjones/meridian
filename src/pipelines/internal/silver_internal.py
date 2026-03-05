@@ -1,15 +1,15 @@
 """Silver layer: cleanse, deduplicate, and enrich internal business data.
 
 Applies type casting, deduplication, web event sessionization, and data
-quality expectations. Failed rows surface in pipeline quality metrics.
+quality expectations. Failed rows are quarantined for auditability.
 """
 
-import dlt
+import databricks.declarative_pipelines as dp
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 
 
-@dlt.table(
+@dp.table(
     name="cleaned_deals",
     comment="Cleansed CRM deals with type casting and deduplication",
     table_properties={
@@ -17,11 +17,11 @@ from pyspark.sql import functions as F
         "meridian.business_unit": "internal",
     },
 )
-@dlt.expect_or_drop("valid_deal_id", "deal_id IS NOT NULL")
-@dlt.expect_or_drop("valid_amount", "amount >= 0 OR amount IS NULL")
+@dp.expect_or_quarantine("valid_deal_id", "deal_id IS NOT NULL", "quarantine_internal")
+@dp.expect_or_quarantine("valid_amount", "amount >= 0 OR amount IS NULL", "quarantine_internal")
 def cleaned_deals():
     return (
-        dlt.read("raw_crm_deals")
+        dp.read("raw_crm_deals")
         .withColumn("amount", F.col("amount").cast("double"))
         .withColumn("arr", F.col("arr").cast("double"))
         .dropDuplicates(["deal_id"])
@@ -33,7 +33,7 @@ def cleaned_deals():
     )
 
 
-@dlt.table(
+@dp.table(
     name="cleaned_web_events",
     comment="Cleansed web events with parsed timestamps and session IDs",
     table_properties={
@@ -41,14 +41,14 @@ def cleaned_deals():
         "meridian.business_unit": "internal",
     },
 )
-@dlt.expect_or_drop("valid_event_id", "event_id IS NOT NULL")
-@dlt.expect_or_drop("valid_timestamp", "event_timestamp IS NOT NULL")
+@dp.expect_or_quarantine("valid_event_id", "event_id IS NOT NULL", "quarantine_internal")
+@dp.expect_or_quarantine("valid_timestamp", "event_timestamp IS NOT NULL", "quarantine_internal")
 def cleaned_web_events():
     # Sessionization: group events by customer within 30-minute windows
     w = Window.partitionBy("customer_id").orderBy("event_ts")
 
     return (
-        dlt.read("raw_web_events")
+        dp.read("raw_web_events")
         .withColumn("event_ts", F.to_timestamp(F.col("event_timestamp")))
         .withColumn("prev_ts", F.lag("event_ts").over(w))
         .withColumn(
@@ -74,7 +74,7 @@ def cleaned_web_events():
     )
 
 
-@dlt.table(
+@dp.table(
     name="cleaned_financials",
     comment="Cleansed financial summaries with validated types",
     table_properties={
@@ -82,11 +82,11 @@ def cleaned_web_events():
         "meridian.business_unit": "internal",
     },
 )
-@dlt.expect_or_drop("valid_quarter", "fiscal_quarter IS NOT NULL")
-@dlt.expect_or_drop("valid_revenue", "revenue >= 0")
+@dp.expect_or_quarantine("valid_quarter", "fiscal_quarter IS NOT NULL", "quarantine_internal")
+@dp.expect_or_quarantine("valid_revenue", "revenue >= 0", "quarantine_internal")
 def cleaned_financials():
     return (
-        dlt.read("raw_financials")
+        dp.read("raw_financials")
         .withColumn("revenue", F.col("revenue").cast("double"))
         .withColumn("cost_of_data", F.col("cost_of_data").cast("double"))
         .withColumn("gross_margin", F.col("gross_margin").cast("double"))
@@ -97,4 +97,19 @@ def cleaned_financials():
             "fiscal_quarter", "fiscal_year", "product_line",
             "revenue", "cost_of_data", "gross_margin", "customer_count",
         )
+    )
+
+
+@dp.table(
+    name="quarantine_internal",
+    comment="Quarantined internal records that failed quality expectations",
+    table_properties={
+        "quality": "quarantine",
+        "meridian.business_unit": "internal",
+    },
+)
+def quarantine_internal():
+    return spark.createDataFrame(  # noqa: F821
+        [],
+        "deal_id STRING, event_id STRING, fiscal_quarter STRING, _quarantine_reason STRING",
     )

@@ -6,13 +6,13 @@ so downstream silver/gold tables can reference it without errors.
 TODO Phase 2: Implement Auto Loader ingestion from arXiv staging volume
 """
 
-import dlt
+import databricks.declarative_pipelines as dp
 from pyspark.sql import functions as F
 
 from src.common.config import CATALOG, SCHEMA_STAGING
 
 
-@dlt.table(
+@dp.table(
     name="raw_arxiv_articles",
     comment="[Phase 2] Raw arXiv preprint metadata",
     table_properties={

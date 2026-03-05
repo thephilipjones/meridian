@@ -7,8 +7,8 @@ Packaged as a **Databricks Asset Bundle (DAB)** — deploy to any Unity Catalog-
 ## Quick Start
 
 ```bash
-# 1. Configure Databricks CLI for your target workspace
-databricks configure --profile meridian
+# 1. Authenticate with the Databricks workspace
+databricks auth login --profile k2zkdm
 
 # 2. Install Python dependencies
 uv venv --python 3.11 && source .venv/bin/activate

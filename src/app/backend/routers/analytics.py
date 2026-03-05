@@ -22,13 +22,19 @@ def get_sales_pipeline(
     region: str | None = Query(None),
 ):
     """Sales pipeline by stage with optional product/region filter."""
-    query = f"SELECT * FROM {_catalog}.internal.sales_pipeline WHERE 1=1"
+    clauses = []
+    params: dict = {}
+
     if product_line:
-        query += f" AND product_line = '{product_line}'"
+        clauses.append("product_line = %(product_line)s")
+        params["product_line"] = product_line
     if region:
-        query += f" AND region = '{region}'"
-    query += " ORDER BY stage"
-    return execute_query(query)
+        clauses.append("region = %(region)s")
+        params["region"] = region
+
+    where = (" AND ".join(clauses)) if clauses else "1=1"
+    query = f"SELECT * FROM {_catalog}.internal.sales_pipeline WHERE {where} ORDER BY stage"
+    return execute_query(query, params or None)
 
 
 @router.get("/product-usage")
@@ -38,13 +44,19 @@ def get_product_usage(
     limit: int = Query(100, le=1000),
 ):
     """Product usage metrics by account and product."""
-    query = f"SELECT * FROM {_catalog}.internal.product_usage WHERE 1=1"
+    clauses = []
+    params: dict = {}
+
     if account_name:
-        query += f" AND account_name = '{account_name}'"
+        clauses.append("account_name = %(account_name)s")
+        params["account_name"] = account_name
     if product:
-        query += f" AND product = '{product}'"
-    query += f" ORDER BY period DESC LIMIT {limit}"
-    return execute_query(query)
+        clauses.append("product = %(product)s")
+        params["product"] = product
+
+    where = (" AND ".join(clauses)) if clauses else "1=1"
+    query = f"SELECT * FROM {_catalog}.internal.product_usage WHERE {where} ORDER BY period DESC LIMIT {int(limit)}"
+    return execute_query(query, params or None)
 
 
 @router.get("/revenue")
@@ -53,13 +65,19 @@ def get_revenue_summary(
     product_line: str | None = Query(None),
 ):
     """Revenue summary with YoY growth by quarter and product."""
-    query = f"SELECT * FROM {_catalog}.internal.revenue_summary WHERE 1=1"
+    clauses = []
+    params: dict = {}
+
     if fiscal_year:
-        query += f" AND fiscal_year = {fiscal_year}"
+        clauses.append("fiscal_year = %(fiscal_year)s")
+        params["fiscal_year"] = fiscal_year
     if product_line:
-        query += f" AND product_line = '{product_line}'"
-    query += " ORDER BY fiscal_year, fiscal_quarter"
-    return execute_query(query)
+        clauses.append("product_line = %(product_line)s")
+        params["product_line"] = product_line
+
+    where = (" AND ".join(clauses)) if clauses else "1=1"
+    query = f"SELECT * FROM {_catalog}.internal.revenue_summary WHERE {where} ORDER BY fiscal_year, fiscal_quarter"
+    return execute_query(query, params or None)
 
 
 @router.get("/customer-health")
@@ -68,8 +86,13 @@ def get_customer_health(
     limit: int = Query(50, le=500),
 ):
     """Customer health scores and tiers."""
-    query = f"SELECT * FROM {_catalog}.internal.customer_health WHERE 1=1"
+    clauses = []
+    params: dict = {}
+
     if health_tier:
-        query += f" AND health_tier = '{health_tier}'"
-    query += f" ORDER BY arr DESC LIMIT {limit}"
-    return execute_query(query)
+        clauses.append("health_tier = %(health_tier)s")
+        params["health_tier"] = health_tier
+
+    where = (" AND ".join(clauses)) if clauses else "1=1"
+    query = f"SELECT * FROM {_catalog}.internal.customer_health WHERE {where} ORDER BY arr DESC LIMIT {int(limit)}"
+    return execute_query(query, params or None)

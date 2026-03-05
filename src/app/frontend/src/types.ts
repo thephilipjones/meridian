@@ -6,6 +6,7 @@ export interface Profile {
   avatar_initials: string;
   nav_tabs: string[];
   business_unit: string;
+  genie_space_id: string | null;
 }
 
 export interface Article {

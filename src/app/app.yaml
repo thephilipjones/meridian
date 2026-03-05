@@ -13,6 +13,12 @@ env:
     value_from: "resources.sql_warehouse.http_path"
   - name: MERIDIAN_CATALOG
     value: "meridian"
+  - name: RESEARCH_GENIE_SPACE_ID
+    value: ""
+  - name: REGULATORY_GENIE_SPACE_ID
+    value: ""
+  - name: INTERNAL_GENIE_SPACE_ID
+    value: ""
 
 resources:
   - name: sql_warehouse

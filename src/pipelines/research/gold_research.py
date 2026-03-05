@@ -5,12 +5,12 @@ and the Meridian Portal app: articles (with citation counts), authors
 (with h-index), citations, mesh_terms, and article_search.
 """
 
-import dlt
+import databricks.declarative_pipelines as dp
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 
 
-@dlt.table(
+@dp.table(
     name="articles",
     comment="Unified research articles with citation counts — primary data product",
     table_properties={
@@ -20,8 +20,8 @@ from pyspark.sql import functions as F
     },
 )
 def articles():
-    cleaned = dlt.read("cleaned_articles")
-    citations = dlt.read("cleaned_citations")
+    cleaned = dp.read("cleaned_articles")
+    citations = dp.read("cleaned_citations")
 
     citation_counts = (
         citations
@@ -45,7 +45,7 @@ def articles():
     )
 
 
-@dlt.table(
+@dp.table(
     name="authors",
     comment="Author profiles with publication counts and h-index",
     table_properties={
@@ -55,8 +55,8 @@ def articles():
     },
 )
 def authors():
-    cleaned_auth = dlt.read("cleaned_authors")
-    articles_df = dlt.read("articles")
+    cleaned_auth = dp.read("cleaned_authors")
+    articles_df = dp.read("articles")
 
     author_articles = (
         cleaned_auth
@@ -95,7 +95,7 @@ def authors():
     )
 
 
-@dlt.table(
+@dp.table(
     name="citations",
     comment="[Phase 2] Citation relationships enriched with article titles and years",
     table_properties={
@@ -112,7 +112,7 @@ def citations():
     )
 
 
-@dlt.table(
+@dp.table(
     name="mesh_terms",
     comment="MeSH term frequency and recency across the article corpus",
     table_properties={
@@ -122,7 +122,7 @@ def citations():
     },
 )
 def mesh_terms():
-    cleaned = dlt.read("cleaned_articles")
+    cleaned = dp.read("cleaned_articles")
     return (
         cleaned
         .filter(F.col("source") == "pubmed")
@@ -137,7 +137,7 @@ def mesh_terms():
     )
 
 
-@dlt.table(
+@dp.table(
     name="article_search",
     comment="Optimized search view for Genie — combines key fields into a single searchable table",
     table_properties={
@@ -148,7 +148,7 @@ def mesh_terms():
 )
 def article_search():
     return (
-        dlt.read("articles")
+        dp.read("articles")
         .select(
             "article_id", "doi", "title", "abstract", "journal",
             "publication_date", "publication_year", "source",

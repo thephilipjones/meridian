@@ -56,11 +56,11 @@ def generate_customers(n: int) -> list[dict]:
 
 def generate_events(customers: list[dict], n: int) -> list[dict]:
     events = []
-    base_date = datetime(2025, 1, 1)
+    base_date = datetime(2024, 2, 1)  # Aligns with FY2024 start
 
     for _ in range(n):
         customer = random.choice(customers)
-        day_offset = random.randint(0, 364)
+        day_offset = random.randint(0, 730)
         ts = base_date + timedelta(
             days=day_offset,
             hours=random.randint(6, 22),

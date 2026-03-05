@@ -2,13 +2,18 @@
 
 Produces quarterly revenue, cost, and margin data by product line,
 consistent with CRM account names and product lines. Writes CSV files
-to the financials staging volume for COPY INTO ingestion.
+to the financials staging volume for Auto Loader ingestion.
+
+Meridian's fiscal year starts February 1 (FISCAL_YEAR_START_MONTH=2):
+  FY Q1 = Feb–Apr    FY Q2 = May–Jul
+  FY Q3 = Aug–Oct    FY Q4 = Nov–Jan (highest revenue: year-end renewals)
 """
 
 import csv
 import io
 import os
 import random
+from datetime import date
 
 from src.common.config import FISCAL_YEAR_START_MONTH, PRODUCT_NAMES, STAGING_PATHS
 
@@ -16,6 +21,14 @@ random.seed(42)
 
 FISCAL_YEARS = [2024, 2025, 2026]
 QUARTERS = ["Q1", "Q2", "Q3", "Q4"]
+
+# Calendar month ranges for each fiscal quarter (FY starts Feb)
+_FQ_MONTH_RANGES = {
+    "Q1": (2, 4),   # Feb–Apr
+    "Q2": (5, 7),   # May–Jul
+    "Q3": (8, 10),  # Aug–Oct
+    "Q4": (11, 1),  # Nov–Jan (wraps into next calendar year)
+}
 
 PRODUCT_BASE_REVENUE = {
     "Regulatory Feed": 4_200_000,
@@ -39,13 +52,24 @@ PRODUCT_CUSTOMER_BASE = {
 }
 
 
+def _fiscal_quarter_start(fy: int, quarter: str) -> date:
+    """Return the calendar start date for a given fiscal quarter."""
+    start_month, _ = _FQ_MONTH_RANGES[quarter]
+    if quarter == "Q4":
+        return date(fy - 1, 11, 1)  # FY Q4 Nov of prior calendar year
+    return date(fy if start_month >= FISCAL_YEAR_START_MONTH else fy - 1, start_month, 1)
+
+
 def generate_financials() -> list[dict]:
     rows = []
     for fy in FISCAL_YEARS:
         for qi, q in enumerate(QUARTERS):
+            quarter_start = _fiscal_quarter_start(fy, q)
+
             for product in PRODUCT_NAMES:
                 base = PRODUCT_BASE_REVENUE[product]
                 year_growth = 1.0 + 0.12 * (fy - FISCAL_YEARS[0])
+                # Q4 (Nov–Jan) is highest due to year-end renewals
                 q_seasonality = [0.22, 0.24, 0.23, 0.31][qi]
                 revenue = round(base * year_growth * q_seasonality * random.uniform(0.92, 1.08), 2)
 
@@ -60,6 +84,7 @@ def generate_financials() -> list[dict]:
                 rows.append({
                     "fiscal_quarter": q,
                     "fiscal_year": fy,
+                    "quarter_start_date": quarter_start.isoformat(),
                     "product_line": product,
                     "revenue": revenue,
                     "cost_of_data": cost_of_data,

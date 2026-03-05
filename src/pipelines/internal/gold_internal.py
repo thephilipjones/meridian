@@ -5,11 +5,11 @@ and the Meridian Portal's Sarah Chen (RevOps) view: sales_pipeline,
 product_usage, revenue_summary, and customer_health.
 """
 
-import dlt
+import databricks.declarative_pipelines as dp
 from pyspark.sql import functions as F
 
 
-@dlt.table(
+@dp.table(
     name="sales_pipeline",
     comment="Sales pipeline analytics — deal counts, amounts, and conversion rates by stage",
     table_properties={
@@ -19,7 +19,7 @@ from pyspark.sql import functions as F
     },
 )
 def sales_pipeline():
-    deals = dlt.read("cleaned_deals")
+    deals = dp.read("cleaned_deals")
     total_deals = deals.count()
 
     return (
@@ -42,7 +42,7 @@ def sales_pipeline():
     )
 
 
-@dlt.table(
+@dp.table(
     name="product_usage",
     comment="Product usage aggregates by account and product — API calls, response times, error rates",
     table_properties={
@@ -52,7 +52,7 @@ def sales_pipeline():
     },
 )
 def product_usage():
-    events = dlt.read("cleaned_web_events")
+    events = dp.read("cleaned_web_events")
 
     return (
         events
@@ -68,7 +68,7 @@ def product_usage():
     )
 
 
-@dlt.table(
+@dp.table(
     name="revenue_summary",
     comment="Revenue summary with YoY growth calculations by product and quarter",
     table_properties={
@@ -78,7 +78,7 @@ def product_usage():
     },
 )
 def revenue_summary():
-    fin = dlt.read("cleaned_financials")
+    fin = dp.read("cleaned_financials")
 
     fin_with_margin_pct = fin.withColumn(
         "gross_margin_pct",
@@ -114,7 +114,7 @@ def revenue_summary():
     )
 
 
-@dlt.table(
+@dp.table(
     name="customer_health",
     comment="Customer health scores based on usage patterns, deal value, and product adoption",
     table_properties={
@@ -124,8 +124,8 @@ def revenue_summary():
     },
 )
 def customer_health():
-    deals = dlt.read("cleaned_deals")
-    usage = dlt.read("product_usage")
+    deals = dp.read("cleaned_deals")
+    usage = dp.read("product_usage")
 
     account_arr = (
         deals
