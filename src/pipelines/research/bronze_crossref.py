@@ -1,3 +1,4 @@
+# Databricks notebook source
 """Bronze layer: ingest raw Crossref DOI metadata and citation links.
 
 Phase 2 stub — creates an empty streaming table with the correct schema.
@@ -5,10 +6,11 @@ Phase 2 stub — creates an empty streaming table with the correct schema.
 TODO Phase 2: Implement Auto Loader ingestion from Crossref staging volume
 """
 
-import databricks.declarative_pipelines as dp
+from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
-from src.common.config import CATALOG, SCHEMA_STAGING
+CATALOG = spark.conf.get("meridian.catalog")  # noqa: F821
+SCHEMA_STAGING = "meridian_staging"
 
 
 @dp.table(

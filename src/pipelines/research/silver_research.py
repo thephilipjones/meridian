@@ -1,3 +1,4 @@
+# Databricks notebook source
 """Silver layer: cleanse, normalize, and enrich research article data.
 
 Parses raw author strings, extracts MeSH terms, normalizes dates, and
@@ -5,7 +6,7 @@ deduplicates by DOI. Failed rows are quarantined. Expectations enforce
 data quality gates.
 """
 
-import databricks.declarative_pipelines as dp
+from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 from pyspark.sql.types import ArrayType, StringType
 
@@ -18,8 +19,8 @@ from pyspark.sql.types import ArrayType, StringType
         "meridian.business_unit": "research",
     },
 )
-@dp.expect_or_quarantine("valid_title", "length(title) > 0", "quarantine_research")
-@dp.expect_or_quarantine("valid_pub_date", "publication_date IS NOT NULL", "quarantine_research")
+@dp.expect_or_drop("valid_title", "length(title) > 0")
+@dp.expect_or_drop("valid_pub_date", "publication_date IS NOT NULL")
 def cleaned_articles():
     pubmed = dp.read("raw_pubmed_articles").withColumn("arxiv_id", F.lit(None).cast("string"))
     arxiv = (

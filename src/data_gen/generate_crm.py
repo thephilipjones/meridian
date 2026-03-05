@@ -1,9 +1,9 @@
-"""Generate synthetic CRM / sales pipeline data for Meridian Internal.
+# Databricks notebook source
+# MAGIC %pip install faker -q
 
-Produces ~500 accounts and ~2000 opportunities with realistic stage
-distributions, ARR values, and close dates. Writes CSV files to the
-CRM staging volume for COPY INTO ingestion.
-"""
+# COMMAND ----------
+
+"""Generate synthetic CRM / sales pipeline data for Meridian Internal."""
 
 import csv
 import io
@@ -14,7 +14,11 @@ from datetime import datetime, timedelta
 
 from faker import Faker
 
-from src.common.config import PRODUCT_NAMES, STAGING_PATHS
+dbutils.widgets.text("catalog_name", "serverless_stable_k2zkdm_catalog")
+_catalog = dbutils.widgets.get("catalog_name")
+
+PRODUCT_NAMES = ["Regulatory Feed", "Research Platform", "Patent Monitor", "Custom Analytics"]
+STAGING_PATH = f"/Volumes/{_catalog}/meridian_staging/crm"
 
 fake = Faker()
 Faker.seed(42)
@@ -92,7 +96,7 @@ def write_csv(deals: list[dict], output_path: str) -> str:
 
 
 def main(output_path: str | None = None):
-    path = output_path or STAGING_PATHS["crm"]
+    path = output_path or STAGING_PATH
     accounts = generate_accounts(NUM_ACCOUNTS)
     deals = generate_deals(accounts, NUM_DEALS)
     filepath = write_csv(deals, path)

@@ -1,3 +1,4 @@
+# Databricks notebook source
 """Bronze layer: ingest raw arXiv preprint metadata.
 
 Phase 2 stub — creates an empty streaming table with the correct schema
@@ -6,10 +7,11 @@ so downstream silver/gold tables can reference it without errors.
 TODO Phase 2: Implement Auto Loader ingestion from arXiv staging volume
 """
 
-import databricks.declarative_pipelines as dp
+from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
-from src.common.config import CATALOG, SCHEMA_STAGING
+CATALOG = spark.conf.get("meridian.catalog")  # noqa: F821
+SCHEMA_STAGING = "meridian_staging"
 
 
 @dp.table(

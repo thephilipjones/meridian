@@ -1,3 +1,4 @@
+# Databricks notebook source
 """Gold layer: business-ready research data products.
 
 Produces the final governed tables consumed by the Research Genie space
@@ -5,7 +6,7 @@ and the Meridian Portal app: articles (with citation counts), authors
 (with h-index), citations, mesh_terms, and article_search.
 """
 
-import databricks.declarative_pipelines as dp
+from pyspark import pipelines as dp
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 
@@ -13,6 +14,7 @@ from pyspark.sql import functions as F
 @dp.table(
     name="articles",
     comment="Unified research articles with citation counts — primary data product",
+    cluster_by=["publication_year", "source", "journal"],
     table_properties={
         "quality": "gold",
         "meridian.business_unit": "research",
@@ -48,6 +50,7 @@ def articles():
 @dp.table(
     name="authors",
     comment="Author profiles with publication counts and h-index",
+    cluster_by=["last_name", "first_name"],
     table_properties={
         "quality": "gold",
         "meridian.business_unit": "research",
@@ -115,6 +118,7 @@ def citations():
 @dp.table(
     name="mesh_terms",
     comment="MeSH term frequency and recency across the article corpus",
+    cluster_by=["mesh_term"],
     table_properties={
         "quality": "gold",
         "meridian.business_unit": "research",
@@ -140,6 +144,7 @@ def mesh_terms():
 @dp.table(
     name="article_search",
     comment="Optimized search view for Genie — combines key fields into a single searchable table",
+    cluster_by=["publication_year", "source"],
     table_properties={
         "quality": "gold",
         "meridian.business_unit": "research",

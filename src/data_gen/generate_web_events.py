@@ -1,9 +1,9 @@
-"""Generate synthetic web analytics / product usage events for Meridian Internal.
+# Databricks notebook source
+# MAGIC %pip install faker -q
 
-Produces ~50K API call events over 12 months with realistic seasonality,
-product usage patterns, and response time distributions. Writes JSON files
-to the web events staging volume for Auto Loader ingestion.
-"""
+# COMMAND ----------
+
+"""Generate synthetic web analytics / product usage events for Meridian Internal."""
 
 import json
 import math
@@ -14,7 +14,11 @@ from datetime import datetime, timedelta
 
 from faker import Faker
 
-from src.common.config import PRODUCT_NAMES, STAGING_PATHS
+dbutils.widgets.text("catalog_name", "serverless_stable_k2zkdm_catalog")
+_catalog = dbutils.widgets.get("catalog_name")
+
+PRODUCT_NAMES = ["Regulatory Feed", "Research Platform", "Patent Monitor", "Custom Analytics"]
+STAGING_PATH = f"/Volumes/{_catalog}/meridian_staging/web_events"
 
 fake = Faker()
 Faker.seed(42)
@@ -113,7 +117,7 @@ def write_json_files(events: list[dict], output_path: str) -> list[str]:
 
 
 def main(output_path: str | None = None):
-    path = output_path or STAGING_PATHS["web_events"]
+    path = output_path or STAGING_PATH
     customers = generate_customers(NUM_CUSTOMERS)
     events = generate_events(customers, NUM_EVENTS)
     filepaths = write_json_files(events, path)

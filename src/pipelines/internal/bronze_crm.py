@@ -1,3 +1,4 @@
+# Databricks notebook source
 """Bronze layer: batch-load synthetic CRM deal CSVs via Auto Loader.
 
 Uses cloudFiles (Auto Loader) to demonstrate incremental, idempotent
@@ -5,10 +6,11 @@ batch loading of known-schema CSV files — the SDP-native equivalent of
 COPY INTO. Files are tracked so re-runs don't re-ingest old data.
 """
 
-import databricks.declarative_pipelines as dp
+from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
-from src.common.config import CATALOG, SCHEMA_STAGING
+CATALOG = spark.conf.get("meridian.catalog")  # noqa: F821
+SCHEMA_STAGING = "meridian_staging"
 
 
 @dp.table(
@@ -32,5 +34,5 @@ def raw_crm_deals():
                 "product_line STRING, region STRING")
         .load(f"/Volumes/{CATALOG}/{SCHEMA_STAGING}/crm")
         .withColumn("_ingest_timestamp", F.current_timestamp())
-        .withColumn("_source_file", F.input_file_name())
+        .withColumn("_source_file", F.col("_metadata.file_path"))
     )

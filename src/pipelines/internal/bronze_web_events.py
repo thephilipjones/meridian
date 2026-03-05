@@ -1,13 +1,15 @@
+# Databricks notebook source
 """Bronze layer: stream synthetic web analytics events via Auto Loader.
 
 Demonstrates the Auto Loader (cloudFiles) ingestion approach for
 high-volume JSON event streams.
 """
 
-import databricks.declarative_pipelines as dp
+from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
-from src.common.config import CATALOG, SCHEMA_STAGING
+CATALOG = spark.conf.get("meridian.catalog")  # noqa: F821
+SCHEMA_STAGING = "meridian_staging"
 
 
 @dp.table(
@@ -26,5 +28,5 @@ def raw_web_events():
         .option("cloudFiles.inferColumnTypes", "true")
         .load(f"/Volumes/{CATALOG}/{SCHEMA_STAGING}/web_events")
         .withColumn("_ingest_timestamp", F.current_timestamp())
-        .withColumn("_source_file", F.input_file_name())
+        .withColumn("_source_file", F.col("_metadata.file_path"))
     )

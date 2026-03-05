@@ -1,3 +1,4 @@
+# Databricks notebook source
 """Fetch PubMed article metadata via NCBI E-utilities API.
 
 Retrieves article abstracts, authors, MeSH terms, and DOIs for a scoped

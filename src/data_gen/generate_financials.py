@@ -1,13 +1,5 @@
-"""Generate synthetic financial summaries for Meridian Internal.
-
-Produces quarterly revenue, cost, and margin data by product line,
-consistent with CRM account names and product lines. Writes CSV files
-to the financials staging volume for Auto Loader ingestion.
-
-Meridian's fiscal year starts February 1 (FISCAL_YEAR_START_MONTH=2):
-  FY Q1 = Feb–Apr    FY Q2 = May–Jul
-  FY Q3 = Aug–Oct    FY Q4 = Nov–Jan (highest revenue: year-end renewals)
-"""
+# Databricks notebook source
+"""Generate synthetic financial summaries for Meridian Internal."""
 
 import csv
 import io
@@ -15,7 +7,12 @@ import os
 import random
 from datetime import date
 
-from src.common.config import FISCAL_YEAR_START_MONTH, PRODUCT_NAMES, STAGING_PATHS
+dbutils.widgets.text("catalog_name", "serverless_stable_k2zkdm_catalog")
+_catalog = dbutils.widgets.get("catalog_name")
+
+FISCAL_YEAR_START_MONTH = 2
+PRODUCT_NAMES = ["Regulatory Feed", "Research Platform", "Patent Monitor", "Custom Analytics"]
+STAGING_PATH = f"/Volumes/{_catalog}/meridian_staging/financials"
 
 random.seed(42)
 
@@ -111,7 +108,7 @@ def write_csv(rows: list[dict], output_path: str) -> str:
 
 
 def main(output_path: str | None = None):
-    path = output_path or STAGING_PATHS["financials"]
+    path = output_path or STAGING_PATH
     rows = generate_financials()
     filepath = write_csv(rows, path)
     print(f"Generated {len(rows)} financial summary rows -> {filepath}")

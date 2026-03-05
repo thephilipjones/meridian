@@ -1,10 +1,11 @@
+# Databricks notebook source
 """Silver layer: cleanse, deduplicate, and enrich internal business data.
 
 Applies type casting, deduplication, web event sessionization, and data
 quality expectations. Failed rows are quarantined for auditability.
 """
 
-import databricks.declarative_pipelines as dp
+from pyspark import pipelines as dp
 from pyspark.sql import Window
 from pyspark.sql import functions as F
 
@@ -17,8 +18,8 @@ from pyspark.sql import functions as F
         "meridian.business_unit": "internal",
     },
 )
-@dp.expect_or_quarantine("valid_deal_id", "deal_id IS NOT NULL", "quarantine_internal")
-@dp.expect_or_quarantine("valid_amount", "amount >= 0 OR amount IS NULL", "quarantine_internal")
+@dp.expect_or_drop("valid_deal_id", "deal_id IS NOT NULL")
+@dp.expect_or_drop("valid_amount", "amount >= 0 OR amount IS NULL")
 def cleaned_deals():
     return (
         dp.read("raw_crm_deals")
@@ -41,8 +42,8 @@ def cleaned_deals():
         "meridian.business_unit": "internal",
     },
 )
-@dp.expect_or_quarantine("valid_event_id", "event_id IS NOT NULL", "quarantine_internal")
-@dp.expect_or_quarantine("valid_timestamp", "event_timestamp IS NOT NULL", "quarantine_internal")
+@dp.expect_or_drop("valid_event_id", "event_id IS NOT NULL")
+@dp.expect_or_drop("valid_timestamp", "event_timestamp IS NOT NULL")
 def cleaned_web_events():
     # Sessionization: group events by customer within 30-minute windows
     w = Window.partitionBy("customer_id").orderBy("event_ts")
@@ -82,8 +83,8 @@ def cleaned_web_events():
         "meridian.business_unit": "internal",
     },
 )
-@dp.expect_or_quarantine("valid_quarter", "fiscal_quarter IS NOT NULL", "quarantine_internal")
-@dp.expect_or_quarantine("valid_revenue", "revenue >= 0", "quarantine_internal")
+@dp.expect_or_drop("valid_quarter", "fiscal_quarter IS NOT NULL")
+@dp.expect_or_drop("valid_revenue", "revenue >= 0")
 def cleaned_financials():
     return (
         dp.read("raw_financials")

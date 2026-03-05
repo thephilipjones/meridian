@@ -7,15 +7,15 @@ imports from here — never hardcode table references elsewhere.
 
 import os
 
-CATALOG = os.environ.get("MERIDIAN_CATALOG", "meridian")
+CATALOG = os.environ.get("MERIDIAN_CATALOG", "serverless_stable_k2zkdm_catalog")
 
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
-SCHEMA_REGULATORY = "regulatory"
-SCHEMA_RESEARCH = "research"
-SCHEMA_INTERNAL = "internal"
-SCHEMA_STAGING = "staging"
+SCHEMA_REGULATORY = "meridian_regulatory"
+SCHEMA_RESEARCH = "meridian_research"
+SCHEMA_INTERNAL = "meridian_internal"
+SCHEMA_STAGING = "meridian_staging"
 
 # ---------------------------------------------------------------------------
 # Staging volume paths (raw files land here before pipeline ingestion)

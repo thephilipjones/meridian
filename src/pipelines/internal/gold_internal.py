@@ -1,3 +1,4 @@
+# Databricks notebook source
 """Gold layer: business-ready internal analytics data products.
 
 Produces governed tables consumed by the Internal Analytics Genie space
@@ -5,13 +6,14 @@ and the Meridian Portal's Sarah Chen (RevOps) view: sales_pipeline,
 product_usage, revenue_summary, and customer_health.
 """
 
-import databricks.declarative_pipelines as dp
+from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
 
 @dp.table(
     name="sales_pipeline",
     comment="Sales pipeline analytics — deal counts, amounts, and conversion rates by stage",
+    cluster_by=["stage", "product_line", "fiscal_quarter"],
     table_properties={
         "quality": "gold",
         "meridian.business_unit": "internal",
@@ -45,6 +47,7 @@ def sales_pipeline():
 @dp.table(
     name="product_usage",
     comment="Product usage aggregates by account and product — API calls, response times, error rates",
+    cluster_by=["account_name", "product", "period"],
     table_properties={
         "quality": "gold",
         "meridian.business_unit": "internal",
@@ -71,6 +74,7 @@ def product_usage():
 @dp.table(
     name="revenue_summary",
     comment="Revenue summary with YoY growth calculations by product and quarter",
+    cluster_by=["fiscal_year", "fiscal_quarter", "product_line"],
     table_properties={
         "quality": "gold",
         "meridian.business_unit": "internal",
@@ -117,6 +121,7 @@ def revenue_summary():
 @dp.table(
     name="customer_health",
     comment="Customer health scores based on usage patterns, deal value, and product adoption",
+    cluster_by=["health_tier", "account_name"],
     table_properties={
         "quality": "gold",
         "meridian.business_unit": "internal",
