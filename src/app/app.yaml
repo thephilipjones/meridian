@@ -8,9 +8,9 @@ command:
 
 env:
   - name: DATABRICKS_SERVER_HOSTNAME
-    value_from: "resources.sql_warehouse.server_hostname"
+    valueFrom: "sql_warehouse.server_hostname"
   - name: DATABRICKS_HTTP_PATH
-    value_from: "resources.sql_warehouse.http_path"
+    valueFrom: "sql_warehouse.http_path"
   - name: MERIDIAN_CATALOG
     value: "serverless_stable_k2zkdm_catalog"
   - name: RESEARCH_GENIE_SPACE_ID
