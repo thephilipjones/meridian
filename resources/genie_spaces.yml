@@ -12,10 +12,10 @@ genie_spaces:
     name: "Meridian Research Assistant"
     description: "Natural language Q&A over 36M+ biomedical articles, citations, and MeSH terms"
     tables:
-      - "${var.catalog_name}.research.articles"
-      - "${var.catalog_name}.research.authors"
-      - "${var.catalog_name}.research.citations"
-      - "${var.catalog_name}.research.mesh_terms"
+      - "${var.catalog_name}.meridian_research.articles"
+      - "${var.catalog_name}.meridian_research.authors"
+      - "${var.catalog_name}.meridian_research.citations"
+      - "${var.catalog_name}.meridian_research.mesh_terms"
     custom_instructions: |
       You are the Meridian Research Assistant, helping researchers explore
       biomedical literature across PubMed, arXiv, and Crossref sources.
@@ -40,10 +40,10 @@ genie_spaces:
     name: "Meridian Regulatory Intelligence"
     description: "Natural language Q&A over SEC filings, FDA actions, and patent data"
     tables:
-      - "${var.catalog_name}.regulatory.regulatory_actions"
-      - "${var.catalog_name}.regulatory.patent_landscape"
-      - "${var.catalog_name}.regulatory.company_entities"
-      - "${var.catalog_name}.regulatory.company_risk_signals"
+      - "${var.catalog_name}.meridian_regulatory.regulatory_actions"
+      - "${var.catalog_name}.meridian_regulatory.patent_landscape"
+      - "${var.catalog_name}.meridian_regulatory.company_entities"
+      - "${var.catalog_name}.meridian_regulatory.company_risk_signals"
     custom_instructions: |
       You are the Meridian Regulatory Intelligence assistant.
 
@@ -61,10 +61,10 @@ genie_spaces:
     name: "Meridian Internal Analytics"
     description: "Revenue, pipeline, product usage, and customer health analytics"
     tables:
-      - "${var.catalog_name}.internal.sales_pipeline"
-      - "${var.catalog_name}.internal.product_usage"
-      - "${var.catalog_name}.internal.revenue_summary"
-      - "${var.catalog_name}.internal.customer_health"
+      - "${var.catalog_name}.meridian_internal.sales_pipeline"
+      - "${var.catalog_name}.meridian_internal.product_usage"
+      - "${var.catalog_name}.meridian_internal.revenue_summary"
+      - "${var.catalog_name}.meridian_internal.customer_health"
     custom_instructions: |
       You are the Meridian Internal Analytics assistant for the RevOps team.
 

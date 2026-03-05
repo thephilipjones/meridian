@@ -2,9 +2,11 @@ resources:
   pipelines:
     research_pipeline:
       name: "Meridian Research Pipeline"
-      target: "${var.catalog_name}.research"
+      catalog: ${var.catalog_name}
+      target: "meridian_research"
       development: true
       channel: PREVIEW
+      serverless: true
       libraries:
         - notebook:
             path: ../src/pipelines/research/bronze_pubmed.py
@@ -18,12 +20,17 @@ resources:
             path: ../src/pipelines/research/gold_research.py
       configuration:
         meridian.catalog: ${var.catalog_name}
+      permissions:
+        - level: CAN_VIEW
+          group_name: users
 
     internal_pipeline:
       name: "Meridian Internal Pipeline"
-      target: "${var.catalog_name}.internal"
+      catalog: ${var.catalog_name}
+      target: "meridian_internal"
       development: true
       channel: PREVIEW
+      serverless: true
       libraries:
         - notebook:
             path: ../src/pipelines/internal/bronze_crm.py
@@ -37,5 +44,8 @@ resources:
             path: ../src/pipelines/internal/gold_internal.py
       configuration:
         meridian.catalog: ${var.catalog_name}
+      permissions:
+        - level: CAN_VIEW
+          group_name: users
 
     # TODO Phase 2: Add regulatory_pipeline

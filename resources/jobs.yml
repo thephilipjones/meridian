@@ -6,6 +6,11 @@ resources:
         - task_key: run_setup
           notebook_task:
             notebook_path: ../src/notebooks/00_setup.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+      permissions:
+        - level: CAN_MANAGE
+          group_name: users
 
     data_gen_job:
       name: "Meridian — Generate Synthetic Data"
@@ -13,12 +18,21 @@ resources:
         - task_key: gen_crm
           notebook_task:
             notebook_path: ../src/data_gen/generate_crm.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
         - task_key: gen_web_events
           notebook_task:
             notebook_path: ../src/data_gen/generate_web_events.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
         - task_key: gen_financials
           notebook_task:
             notebook_path: ../src/data_gen/generate_financials.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+      permissions:
+        - level: CAN_MANAGE
+          group_name: users
 
     data_fetch_job:
       name: "Meridian — Fetch Real Data (Optional)"
@@ -26,6 +40,11 @@ resources:
         - task_key: fetch_pubmed
           notebook_task:
             notebook_path: ../src/data_fetch/fetch_pubmed.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+      permissions:
+        - level: CAN_MANAGE
+          group_name: users
 
     run_pipelines_job:
       name: "Meridian — Run All Pipelines"
@@ -36,3 +55,13 @@ resources:
         - task_key: run_internal
           pipeline_task:
             pipeline_id: ${resources.pipelines.internal_pipeline.id}
+        - task_key: create_metric_views
+          notebook_task:
+            notebook_path: ../src/notebooks/04_metric_views.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+          depends_on:
+            - task_key: run_internal
+      permissions:
+        - level: CAN_MANAGE
+          group_name: users

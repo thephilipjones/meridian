@@ -7,15 +7,16 @@ include:
 variables:
   catalog_name:
     description: Unity Catalog catalog name for all Meridian assets
-    default: meridian
+    default: serverless_stable_k2zkdm_catalog
   warehouse_id:
     description: SQL warehouse ID for Genie and app queries
+    default: e8eadc734c07e7f5
   staging_volume_path:
     description: Base path for staging volumes
-    default: /Volumes/${var.catalog_name}/staging
+    default: /Volumes/${var.catalog_name}/meridian_staging
 
 workspace:
-  root_path: /Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+  root_path: /Users/${workspace.current_user.userName}/meridian
 
 targets:
   dev:
