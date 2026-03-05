@@ -1,0 +1,10 @@
+resources:
+  dashboards:
+    internal_analytics_dashboard:
+      display_name: "Meridian Internal Analytics"
+      warehouse_id: ${var.warehouse_id}
+      file_path: ../src/dashboards/internal_analytics.lvdash.json
+
+      permissions:
+        - level: CAN_READ
+          group_name: users

@@ -17,7 +17,8 @@
 
 # COMMAND ----------
 
-catalog = spark.conf.get("meridian.catalog", "meridian")
+dbutils.widgets.text("catalog_name", "serverless_stable_k2zkdm_catalog")
+catalog = dbutils.widgets.get("catalog_name")
 spark.sql(f"USE CATALOG {catalog}")
 
 # COMMAND ----------
@@ -35,7 +36,7 @@ spark.sql(f"USE CATALOG {catalog}")
 # COMMAND ----------
 
 # List staging volumes to show the variety of sources
-display(spark.sql(f"SHOW VOLUMES IN {catalog}.staging"))
+display(spark.sql(f"SHOW VOLUMES IN {catalog}.meridian_staging"))
 
 # COMMAND ----------
 
@@ -71,7 +72,7 @@ dbutils.fs.ls(f"/Volumes/{catalog}/staging/crm/")
 # Raw PubMed articles — as they arrived
 display(spark.sql(f"""
     SELECT pmid, doi, title, journal, publication_date, source
-    FROM {catalog}.research.raw_pubmed_articles
+    FROM {catalog}.meridian_research.raw_pubmed_articles
     LIMIT 10
 """))
 
@@ -85,7 +86,7 @@ display(spark.sql(f"""
 # Cleaned articles with parsed dates, deduplication, preprint flagging
 display(spark.sql(f"""
     SELECT article_id, doi, title, publication_year, source, is_preprint, publication_type
-    FROM {catalog}.research.cleaned_articles
+    FROM {catalog}.meridian_research.cleaned_articles
     LIMIT 10
 """))
 
@@ -102,22 +103,22 @@ display(spark.sql(f"""
 
 # COMMAND ----------
 
-# Articles with citation counts — the primary research data product
+# Articles with citation counts — pipe syntax for a clean top-N query
 display(spark.sql(f"""
-    SELECT title, journal, publication_year, publication_type, citation_count
-    FROM {catalog}.research.articles
-    ORDER BY citation_count DESC
-    LIMIT 10
+    FROM {catalog}.meridian_research.articles
+    |> ORDER BY citation_count DESC
+    |> LIMIT 10
+    |> SELECT title, journal, publication_year, publication_type, citation_count
 """))
 
 # COMMAND ----------
 
-# Author profiles with h-index
+# Author profiles with h-index — pipe syntax
 display(spark.sql(f"""
-    SELECT full_name, article_count, h_index, first_pub_year, last_pub_year
-    FROM {catalog}.research.authors
-    ORDER BY h_index DESC
-    LIMIT 10
+    FROM {catalog}.meridian_research.authors
+    |> ORDER BY h_index DESC
+    |> LIMIT 10
+    |> SELECT full_name, article_count, h_index, first_pub_year, last_pub_year
 """))
 
 # COMMAND ----------
@@ -146,23 +147,25 @@ display(spark.sql(f"""
 
 # COMMAND ----------
 
-# The data behind Sarah's dashboard — sales pipeline
+# The data behind Sarah's dashboard — using pipe syntax (|>)
 display(spark.sql(f"""
-    SELECT stage, SUM(deal_count) as deals, ROUND(SUM(total_amount), 0) as pipeline_value
-    FROM {catalog}.internal.sales_pipeline
-    GROUP BY stage
-    ORDER BY deals DESC
+    FROM {catalog}.meridian_internal.sales_pipeline
+    |> AGGREGATE SUM(deal_count) AS deals, ROUND(SUM(total_amount), 0) AS pipeline_value
+       GROUP BY stage
+    |> ORDER BY deals DESC
 """))
 
 # COMMAND ----------
 
-# Revenue with YoY comparison
+# Revenue via Metric Views — governed KPIs, consistent everywhere
 display(spark.sql(f"""
-    SELECT fiscal_year, fiscal_quarter, product_line,
-           ROUND(revenue, 0) as revenue,
-           ROUND(yoy_revenue_growth * 100, 1) as yoy_growth_pct
-    FROM {catalog}.internal.revenue_summary
-    ORDER BY fiscal_year DESC, fiscal_quarter
+    SELECT
+        `Fiscal Year`, `Fiscal Quarter`, `Product Line`,
+        MEASURE(`Total Revenue`) AS revenue,
+        MEASURE(`Gross Margin Pct`) AS margin_pct
+    FROM {catalog}.meridian_internal.revenue_metrics
+    GROUP BY ALL
+    ORDER BY `Fiscal Year` DESC, `Fiscal Quarter`
 """))
 
 # COMMAND ----------
@@ -175,12 +178,12 @@ display(spark.sql(f"""
 # COMMAND ----------
 
 display(spark.sql(f"""
-    SELECT title, journal, publication_year, publication_type, citation_count,
-           CASE WHEN is_preprint = 'true' THEN 'PREPRINT' ELSE 'Peer-reviewed' END as status
-    FROM {catalog}.research.article_search
-    WHERE lower(search_text) LIKE '%crispr%off-target%'
-    ORDER BY citation_count DESC
-    LIMIT 10
+    FROM {catalog}.meridian_research.article_search
+    |> WHERE lower(search_text) LIKE '%crispr%off-target%'
+    |> ORDER BY citation_count DESC
+    |> LIMIT 10
+    |> SELECT title, journal, publication_year, publication_type, citation_count,
+             CASE WHEN is_preprint = 'true' THEN 'PREPRINT' ELSE 'Peer-reviewed' END AS status
 """))
 
 # COMMAND ----------
@@ -210,20 +213,24 @@ display(spark.sql(f"""
 
 # COMMAND ----------
 
-# Show table tags
+# Show table tags — pipe syntax
 display(spark.sql(f"""
-    SELECT table_name, tag_name, tag_value
     FROM {catalog}.information_schema.table_tags
-    WHERE schema_name = 'research'
-    ORDER BY table_name, tag_name
+    |> WHERE schema_name = 'meridian_research'
+    |> ORDER BY table_name, tag_name
+    |> SELECT table_name, tag_name, tag_value
 """))
 
 # COMMAND ----------
 
-# Customer health — showing internal analytics governance
+# Customer health via Metric View — governed health KPIs
 display(spark.sql(f"""
-    SELECT account_name, arr, products_subscribed, health_score, health_tier
-    FROM {catalog}.internal.customer_health
+    SELECT
+        `Account Name`,
+        MEASURE(`Total ARR`) AS arr,
+        MEASURE(`Avg Health Score`) AS health_score
+    FROM {catalog}.meridian_internal.customer_health_metrics
+    GROUP BY ALL
     ORDER BY arr DESC
     LIMIT 10
 """))
@@ -237,6 +244,9 @@ display(spark.sql(f"""
 # MAGIC **Key takeaways:**
 # MAGIC - One platform for ingestion, transformation, governance, and distribution
 # MAGIC - Medallion architecture enforces quality at every layer
+# MAGIC - **Liquid Clustering** adapts table layout to query patterns — zero maintenance
+# MAGIC - **Metric Views** define KPIs once in Unity Catalog — consumed consistently by Genie, dashboards, and SQL
+# MAGIC - **AI/BI Dashboards** provide governed analytics built on Metric Views
 # MAGIC - Genie puts natural language on top of governed data
 # MAGIC - Delta Sharing distributes live data products without copies
 # MAGIC - Unity Catalog provides lineage, tags, and access control

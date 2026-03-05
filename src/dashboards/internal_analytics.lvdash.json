@@ -1,0 +1,187 @@
+{
+  "pages": [
+    {
+      "name": "revenue-overview",
+      "displayName": "Revenue Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "total_revenue_kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "revenue_by_quarter",
+                  "disaggregated": false,
+                  "fields": [
+                    { "name": "total_revenue", "expression": "`total_revenue`" }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "counter",
+              "encodings": {
+                "value": { "fieldName": "total_revenue", "displayName": "Total Revenue" }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 0, "width": 2, "height": 2 }
+        },
+        {
+          "widget": {
+            "name": "margin_kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "revenue_by_quarter",
+                  "disaggregated": false,
+                  "fields": [
+                    { "name": "margin_pct", "expression": "`margin_pct`" }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "counter",
+              "encodings": {
+                "value": { "fieldName": "margin_pct", "displayName": "Gross Margin %" }
+              }
+            }
+          },
+          "position": { "x": 2, "y": 0, "width": 2, "height": 2 }
+        },
+        {
+          "widget": {
+            "name": "customer_count_kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "revenue_by_quarter",
+                  "disaggregated": false,
+                  "fields": [
+                    { "name": "customer_count", "expression": "`customer_count`" }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "counter",
+              "encodings": {
+                "value": { "fieldName": "customer_count", "displayName": "Customers" }
+              }
+            }
+          },
+          "position": { "x": 4, "y": 0, "width": 2, "height": 2 }
+        },
+        {
+          "widget": {
+            "name": "revenue_trend",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "revenue_by_quarter",
+                  "disaggregated": true,
+                  "fields": [
+                    { "name": "quarter_label", "expression": "`quarter_label`" },
+                    { "name": "total_revenue", "expression": "`total_revenue`" },
+                    { "name": "product_line", "expression": "`product_line`" }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": { "fieldName": "quarter_label", "scale": { "type": "categorical" }, "displayName": "Quarter" },
+                "y": { "fieldName": "total_revenue", "scale": { "type": "quantitative" }, "displayName": "Revenue" },
+                "color": { "fieldName": "product_line", "scale": { "type": "categorical" }, "displayName": "Product" }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 2, "width": 6, "height": 4 }
+        },
+        {
+          "widget": {
+            "name": "pipeline_funnel",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "pipeline_by_stage",
+                  "disaggregated": true,
+                  "fields": [
+                    { "name": "stage", "expression": "`stage`" },
+                    { "name": "deal_count", "expression": "`deal_count`" },
+                    { "name": "pipeline_value", "expression": "`pipeline_value`" }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": { "fieldName": "pipeline_value", "scale": { "type": "quantitative" }, "displayName": "Pipeline Value" },
+                "y": { "fieldName": "stage", "scale": { "type": "categorical" }, "displayName": "Stage" }
+              }
+            }
+          },
+          "position": { "x": 0, "y": 6, "width": 3, "height": 4 }
+        },
+        {
+          "widget": {
+            "name": "customer_health_dist",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "health_distribution",
+                  "disaggregated": true,
+                  "fields": [
+                    { "name": "health_tier", "expression": "`health_tier`" },
+                    { "name": "accounts", "expression": "`accounts`" },
+                    { "name": "total_arr", "expression": "`total_arr`" }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": { "fieldName": "health_tier", "scale": { "type": "categorical" }, "displayName": "Health Tier" },
+                "y": { "fieldName": "total_arr", "scale": { "type": "quantitative" }, "displayName": "Total ARR" }
+              }
+            }
+          },
+          "position": { "x": 3, "y": 6, "width": 3, "height": 4 }
+        }
+      ]
+    }
+  ],
+  "datasets": [
+    {
+      "name": "revenue_by_quarter",
+      "displayName": "Revenue by Quarter",
+      "query": "SELECT\n    `Fiscal Year` AS fiscal_year,\n    `Fiscal Quarter` AS fiscal_quarter,\n    CONCAT('FY', `Fiscal Year`, ' ', `Fiscal Quarter`) AS quarter_label,\n    `Product Line` AS product_line,\n    MEASURE(`Total Revenue`) AS total_revenue,\n    MEASURE(`Gross Margin Pct`) AS margin_pct,\n    MEASURE(`Customer Count`) AS customer_count\nFROM serverless_stable_k2zkdm_catalog.meridian_internal.revenue_metrics\nGROUP BY ALL\nORDER BY fiscal_year, fiscal_quarter"
+    },
+    {
+      "name": "pipeline_by_stage",
+      "displayName": "Pipeline by Stage",
+      "query": "SELECT\n    `Stage` AS stage,\n    MEASURE(`Deal Count`) AS deal_count,\n    MEASURE(`Pipeline Value`) AS pipeline_value,\n    MEASURE(`Total ARR`) AS total_arr,\n    MEASURE(`Avg Deal Size`) AS avg_deal_size\nFROM serverless_stable_k2zkdm_catalog.meridian_internal.pipeline_metrics\nGROUP BY ALL\nORDER BY pipeline_value DESC"
+    },
+    {
+      "name": "health_distribution",
+      "displayName": "Customer Health Distribution",
+      "query": "SELECT\n    `Health Tier` AS health_tier,\n    MEASURE(`Account Count`) AS accounts,\n    MEASURE(`Total ARR`) AS total_arr,\n    MEASURE(`Avg Health Score`) AS avg_score\nFROM serverless_stable_k2zkdm_catalog.meridian_internal.customer_health_metrics\nGROUP BY ALL\nORDER BY avg_score DESC"
+    }
+  ]
+}
