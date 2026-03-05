@@ -12,14 +12,26 @@ env:
   - name: MERIDIAN_CATALOG
     value: "serverless_stable_k2zkdm_catalog"
   - name: RESEARCH_GENIE_SPACE_ID
-    value: "01f118c5d7e01a32a58159a70e55160c"
+    valueFrom: genie-research
   - name: REGULATORY_GENIE_SPACE_ID
-    value: "01f118ce34db1cfeb9085c37cea33f8d"
+    valueFrom: genie-regulatory
   - name: INTERNAL_GENIE_SPACE_ID
-    value: "01f118c5ddb81e3dba76005e6020b2bc"
+    valueFrom: genie-internal
 
 resources:
   - name: sql_warehouse
     sql_warehouse:
       warehouse_id: "e8eadc734c07e7f5"
       permission: CAN_USE
+  - name: genie-research
+    genie_space:
+      space_id: "01f118c5d7e01a32a58159a70e55160c"
+      permission: CAN_RUN
+  - name: genie-regulatory
+    genie_space:
+      space_id: "01f118ce34db1cfeb9085c37cea33f8d"
+      permission: CAN_RUN
+  - name: genie-internal
+    genie_space:
+      space_id: "01f118c5ddb81e3dba76005e6020b2bc"
+      permission: CAN_RUN

@@ -41,6 +41,7 @@ export default function GenieEmbed() {
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   const genieSpaceId = activeProfile?.genie_space_id;
   const bu = activeProfile?.business_unit ?? "internal";
@@ -77,9 +78,17 @@ export default function GenieEmbed() {
       const resp = await fetch("/api/genie/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ space_id: genieSpaceId, question }),
+        body: JSON.stringify({
+          space_id: genieSpaceId,
+          question,
+          conversation_id: conversationId,
+        }),
       });
       const data: GenieResult = await resp.json();
+
+      if (data.conversation_id) {
+        setConversationId(data.conversation_id);
+      }
 
       setEntries((prev) => {
         const updated = prev.slice(0, -1);
@@ -119,10 +128,13 @@ export default function GenieEmbed() {
         </div>
         {entries.length > 0 && (
           <button
-            onClick={() => setEntries([])}
+            onClick={() => {
+              setEntries([]);
+              setConversationId(null);
+            }}
             className="text-xs text-gray-400 hover:text-gray-600"
           >
-            Clear
+            New conversation
           </button>
         )}
       </div>
