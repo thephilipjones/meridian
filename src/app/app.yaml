@@ -1,6 +1,6 @@
 command:
   - uvicorn
-  - src.app.backend.main:app
+  - backend.main:app
   - --host
   - 0.0.0.0
   - --port
@@ -12,16 +12,16 @@ env:
   - name: DATABRICKS_HTTP_PATH
     value_from: "resources.sql_warehouse.http_path"
   - name: MERIDIAN_CATALOG
-    value: "meridian"
+    value: "serverless_stable_k2zkdm_catalog"
   - name: RESEARCH_GENIE_SPACE_ID
-    value: ""
+    value: "01f118c5d7e01a32a58159a70e55160c"
   - name: REGULATORY_GENIE_SPACE_ID
     value: ""
   - name: INTERNAL_GENIE_SPACE_ID
-    value: ""
+    value: "01f118c5ddb81e3dba76005e6020b2bc"
 
 resources:
   - name: sql_warehouse
     sql_warehouse:
-      warehouse_id: "${var.warehouse_id}"
+      warehouse_id: "e8eadc734c07e7f5"
       permission: CAN_USE

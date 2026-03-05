@@ -11,8 +11,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from src.app.backend.profiles import get_all_profiles
-from src.app.backend.routers import analytics, catalog, research, sharing
+from backend.profiles import get_all_profiles
+from backend.routers import analytics, catalog, research, sharing
 
 app = FastAPI(
     title="Meridian Portal",

@@ -8,12 +8,11 @@ import os
 
 from fastapi import APIRouter, Query
 
-from src.app.backend.db import execute_query
-from src.common.config import CATALOG
+from backend.db import execute_query
 
 router = APIRouter()
 
-_catalog = os.environ.get("MERIDIAN_CATALOG", CATALOG)
+_catalog = os.environ.get("MERIDIAN_CATALOG", "serverless_stable_k2zkdm_catalog")
 
 
 @router.get("/sales-pipeline")
