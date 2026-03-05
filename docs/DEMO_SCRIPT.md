@@ -1,146 +1,228 @@
-# Meridian Insights — Presenter's Demo Script
+# Meridian Insights — Demo Script
 
-> **Total Time:** ~20 minutes (can be shortened to ~10 by condensing Chapters 2 and 4)
+> **Total time:** ~20 minutes (can be shortened to ~10 by skipping Chapter 2 detail and Chapter 4)
+>
+> **Prerequisites:** Bundle deployed (`databricks bundle deploy -t dev`), all jobs run (`setup_job`, `data_gen_job`, `run_pipelines_job`), app running, Genie spaces created.
+>
+> **Audience mapping:**
+> - Bloomberg Industry Group (BIG): Lead with Internal + Research. Emphasize data product quality and monetization.
+> - Clarivate: Lead with Research + Internal. Emphasize scholarly data at scale and NLP-powered Q&A.
 
 ---
 
-## Before the Demo
+## Pre-Demo Checklist
 
-1. Confirm pipelines have run and gold tables are populated
-2. Open three browser tabs:
-   - Databricks workspace (for pipeline graph, lineage, catalog explorer)
-   - Meridian Portal app
-   - Demo walkthrough notebook (`01_demo_walkthrough.py`)
-3. Set the notebook's `meridian.catalog` config if not using default
+- [ ] Workspace open in browser
+- [ ] Meridian Portal app open in a separate tab: `https://meridian-portal-7474650913311373.aws.databricksapps.com`
+- [ ] Demo walkthrough notebook open: `src/notebooks/01_demo_walkthrough.py`
+- [ ] Pipeline graph visible (navigate to **Pipelines** in sidebar)
+- [ ] Genie spaces accessible (Research Assistant, Internal Analytics)
 
 ---
 
 ## Chapter 1: "The Data Challenge" (3 min)
 
-**Talking point:**
-> "Meridian Insights is a data provider — think Bloomberg, Clarivate, S&P Global. They ingest messy raw data from dozens of sources and turn it into curated, trustworthy data products that their customers pay for. Let's see how they do it on Databricks."
+### Narrative
 
-**Show:**
-- Staging volumes in Catalog Explorer — point out the variety (JSON, XML, CSV)
-- Raw files in the PubMed volume vs CRM CSV vs web event JSON
-- Emphasize: different formats, different cadences, different quality levels
+> *"Meridian Insights is a data provider — think Bloomberg, Clarivate, S&P Global. They ingest messy raw data from dozens of sources and turn it into curated, trustworthy data products that their customers pay for. Let's see how they do it on Databricks."*
 
-**Key message:** "Real data companies deal with messy heterogeneous sources. Databricks handles all of them."
+### What to Show
+
+1. **Run cell: "Show staging volumes"** — `SHOW VOLUMES IN {catalog}.meridian_staging`
+   - Talk about the variety: PubMed JSON, CRM CSVs, financial snapshots, web event streams
+   - *"Each of these volumes is a landing zone for a different data source — different formats, different cadences, different quality levels."*
+
+2. **Run cell: "Peek at raw PubMed JSON"** — `dbutils.fs.ls(...pubmed/)`
+   - Show the raw JSON files from the data generator
+   - *"These are biomedical research articles from PubMed — 5,000 articles across 10 files, each one a JSON-lines document with titles, abstracts, authors, and MeSH terms."*
+
+3. **Run cell: "Peek at raw CRM CSV"** — `dbutils.fs.ls(...crm/)`
+   - *"And here's the internal CRM data — 2,000 synthetic deals. Different format, different schema, same platform."*
+
+### Key Talking Points
+- Databricks handles JSON, CSV, XML — all within the same framework
+- Volumes provide governed cloud storage within Unity Catalog
+- No external object stores to manage separately
 
 ---
 
 ## Chapter 2: "The Pipeline" (5 min)
 
-**Talking point:**
-> "Meridian uses Spark Declarative Pipelines to build a medallion architecture — bronze for raw ingestion, silver for cleansing and enrichment, gold for business-ready data products."
+### Narrative
 
-**Show:**
-1. **Pipeline graph in UI** — walk through bronze → silver → gold flow
-2. **Auto Loader** — show PubMed bronze table with `_source_file` and `_ingest_timestamp`
-3. **COPY INTO contrast** — show CRM bronze loaded from CSVs (different pattern, same framework)
-4. **Quality gates** — show the expectations on the silver layer. Optional: trigger a failure by uploading a malformed file
-5. **Lineage** — navigate to `meridian.research.articles` in Catalog Explorer, click Lineage tab. Trace back through silver to the raw PubMed source
+> *"Meridian uses Spark Declarative Pipelines to build a medallion architecture — bronze for raw ingestion, silver for cleansing and enrichment, gold for business-ready data products."*
 
-**Key message:** "Data providers live and die by quality. SDP gives you declarative quality gates, automatic lineage, and multiple ingestion patterns in one framework."
+### What to Show
 
-**Fallback query (if UI is slow):**
-```sql
-SELECT title, journal, publication_year, publication_type, citation_count
-FROM meridian.research.articles
-ORDER BY citation_count DESC LIMIT 10
-```
+1. **Navigate to the Pipeline UI** — Open the Research Pipeline from the Pipelines sidebar
+   - Show the DAG: `bronze_pubmed → silver (cleaned_articles, cleaned_authors) → gold (articles, authors, mesh_terms, article_search)`
+   - *"This is the full pipeline graph. Notice how it flows from raw ingestion through quality gates to finished data products — all defined declaratively in Python."*
+
+2. **Run cell: "Raw PubMed articles"** — Shows bronze data
+   - *"At the bronze layer, we see raw records exactly as they arrived. Auto Loader tracked which files have been processed, so re-runs don't re-ingest."*
+
+3. **Run cell: "Cleaned articles"** — Shows silver data with parsed dates, deduplication
+   - *"The silver layer is where quality happens. Notice the preprint flag, publication type classification, and DOI-based deduplication. Two expectations enforce this: every article must have a title and a valid publication date. Records that fail get dropped."*
+   - **Show the expectation metrics** in the pipeline UI if available
+
+4. **Run cell: "Articles with citation counts"** — Gold layer, pipe syntax
+   - *"The gold layer produces governed data products. Notice the pipe syntax — this is Databricks SQL's modern query style."*
+   - Point out `|> ORDER BY citation_count DESC |> LIMIT 10`
+
+5. **Run cell: "Author profiles with h-index"** — Gold layer
+   - *"We've computed h-index for every author in the corpus — a standard academic metric, calculated at scale."*
+
+6. **Show Lineage** — Navigate to Catalog Explorer → `meridian_research.articles` → Lineage tab
+   - *"Trace any gold record back through silver to the original raw data. This lineage is automatic — no extra configuration. For a data provider, this is how you prove provenance to customers."*
+
+### Key Talking Points
+- Spark Declarative Pipelines: define tables declaratively, Databricks handles orchestration
+- Auto Loader: incremental, exactly-once file ingestion
+- Expectations: data quality gates (`expect_or_drop`) prevent bad data from reaching customers
+- Liquid Clustering: `cluster_by` on gold tables adapts layout to query patterns — zero maintenance
+- Lineage: automatic column-level tracking across the full pipeline
 
 ---
 
 ## Chapter 3: "The Portal" (7 min)
 
-**Talking point:**
-> "Meridian's customers and internal teams interact with data through the Meridian Portal — built as a Databricks App."
+### Narrative
 
-### As Sarah Chen (Internal — RevOps)
+> *"Meridian's customers and internal teams interact with data through the Meridian Portal — built as a Databricks App with FastAPI on the backend and React on the frontend."*
 
-**Show:**
-- Sales dashboard with pipeline by stage, revenue trend
-- Product usage heatmap
-- Customer health table with red/yellow/green tiers
+### What to Show
 
-**Genie question:**
-> "What was Q4 revenue by product line compared to last year?"
+**Open the Meridian Portal app in the browser.**
 
-**Fallback query:**
-```sql
-SELECT product_line, revenue, yoy_revenue_growth
-FROM meridian.internal.revenue_summary
-WHERE fiscal_quarter = 'Q4'
-ORDER BY fiscal_year DESC
-```
+#### As Sarah Chen (Internal RevOps) — 2 min
 
-### Switch to Dr. Anika Park (Research)
+1. Click **Sarah Chen** in the profile switcher
+2. Show the **Sales Dashboard** tab
+   - *"Sarah sees the full picture — pipeline by stage, revenue by product, customer health. This is powered by gold tables and Metric Views."*
 
-**Show:**
-- Research Q&A interface
-- Paper Browser with filters
+3. **Run notebook cell: "Sales pipeline by stage"** — pipe syntax aggregate
+   - *"Here's the same data Sarah sees, expressed in pipe syntax SQL."*
 
-**Genie question:**
-> "What are the latest findings on CRISPR off-target effects?"
+4. **Run notebook cell: "Revenue via Metric Views"**
+   - *"Metric Views are governed KPI definitions stored in Unity Catalog. Total Revenue, Gross Margin Pct — defined once, consumed everywhere: Genie, dashboards, SQL. No more conflicting metric definitions across teams."*
 
-**Point out:**
-- Preprint vs peer-reviewed badges
-- Study type classification (RCT, meta-analysis, etc.)
-- DOI links for traceability
+5. **Open the Internal Analytics Genie space** (or Genie tab in the portal)
+   - Ask: *"What was Q4 revenue by product line compared to last year?"*
+   - *"Genie generates SQL against the governed gold tables and Metric Views. The custom instructions we defined ensure it uses fiscal quarters — Meridian's FY starts February — and always shows YoY comparison."*
 
-**Key message:** "This is what it looks like when you put Genie in front of 36 million research articles with expert instructions guiding the interpretation."
+#### As Dr. Anika Park (Research) — 3 min
 
-### Switch to James Rivera (Regulatory — Phase 2)
+1. Click **Dr. Anika Park** in the profile switcher
+2. Show the **Research Q&A** or **Paper Browser** tab
 
-**If Phase 2 is ready**, show:
-- Data catalog with subscribed vs unsubscribed products
-- Scoped regulatory Genie
-- Delta Sharing connection info
+3. **Run notebook cell: "CRISPR off-target articles"** — pipe syntax search
+   - *"What are the latest findings on CRISPR off-target effects? We search across 5,000 articles, with results ranked by citation count and preprints clearly flagged."*
 
-**If Phase 2 is not ready**, say:
-> "James would see a data product catalog showing exactly what his subscription includes, with connection instructions for pulling live data into his own environment via Delta Sharing."
+4. **Open the Research Assistant Genie space**
+   - Ask: *"What are the most cited meta-analyses on immunotherapy for lung cancer?"*
+   - Wait for the response, then point out:
+     - Source citations (DOIs)
+     - Study type classification
+     - Preprint flagging
+   - *"This is what it looks like when you put Genie in front of a research corpus with expert instructions. It cites sources, distinguishes preprints from peer-reviewed work, and prioritizes meta-analyses when you ask broad questions."*
+
+   - Follow up: *"Who are the top 5 authors by h-index in this area?"*
+   - *"Genie crosses tables seamlessly — articles, authors, citation counts — to answer composite questions."*
+
+#### Key Talking Points
+- Databricks Apps: full-stack (FastAPI + React) deployed and managed by the platform
+- Profile switcher: same app, different data scopes — demonstrates multi-tenant UX
+- Metric Views: governed KPIs consumed by Genie and dashboards consistently
+- Genie custom instructions: domain-expert behavior without custom model training
 
 ---
 
 ## Chapter 4: "The Distribution" (3 min)
 
-**Talking point:**
-> "Meridian's enterprise customers don't want to use a portal — they want the data in their own environment. Delta Sharing makes this possible."
+> **Phase 2 — describe the concept, no live demo yet.**
 
-**Show (if Phase 2 ready):**
-1. Share in Unity Catalog containing gold tables
-2. Consumer notebook querying shared data from a separate catalog
-3. Access revocation — remove a table, show immediate effect
+### Narrative
 
-**Key message:** "When a subscription lapses, access is cut immediately — no stale data floating around."
+> *"Meridian's enterprise customers don't want to use a portal — they want the data in their own environment. Delta Sharing makes this possible."*
+
+### Talking Points
+
+- Delta Sharing: open protocol for secure, live data sharing without copying
+- Share gold tables directly to customers via Unity Catalog
+- Recipient activation: customer gets a credential file, queries from their own Spark, Pandas, or BI tool
+- Access revocation: when a subscription lapses, access is cut immediately
+- *"No stale data floating around, no ETL pipelines to maintain, no storage costs for copies."*
 
 ---
 
 ## Chapter 5: "The Governance Story" (2 min)
 
-**Talking point:**
-> "For a data provider, governance isn't optional — it's the product. Unity Catalog gives Meridian auditability, access control, and lineage across the entire platform."
+### Narrative
 
-**Show:**
-- Table tags: `data_product:true`, `quality:gold`, `business_unit:research`
-- Row-level security concept (James sees only SEC data, not FDA)
-- System tables: who queried what, when
+> *"For a data provider, governance isn't optional — it's the product. Unity Catalog gives Meridian auditability, access control, and lineage across the entire platform."*
 
-**Key message:** "Every table, every query, every access decision is tracked. This is what enterprise-grade governance looks like."
+### What to Show
+
+1. **Run notebook cell: "Table tags"** — pipe syntax over `information_schema.table_tags`
+   - *"Every table is tagged with its quality tier, business unit, and whether it's a data product. These tags drive access policies and catalog discovery."*
+
+2. **Run notebook cell: "Customer health via Metric View"**
+   - *"Metric Views ensure the same KPI definitions appear everywhere — dashboards, Genie, ad-hoc SQL. No more 'which revenue number is right?' debates."*
+
+### Key Talking Points
+- Unity Catalog: single pane for access control, lineage, tagging, and sharing
+- Table properties: `quality: gold`, `data_product: true` — metadata-driven governance
+- System tables (Phase 2): audit logs showing who queried what and when
+- Row-level security (Phase 2): different customers see different data slices
 
 ---
 
-## Closing (1 min)
+## Demo Complete — Summary Slide
 
-> "Everything you've seen — the pipelines, the app, the Genie spaces, the sharing, the governance — is running on a single Databricks workspace, deployed from a single Asset Bundle. Clone the repo, run `databricks bundle deploy`, and you have the full platform in your own workspace."
+### Key Takeaways
+
+1. **One platform** for ingestion, transformation, governance, and distribution
+2. **Medallion architecture** enforces quality at every layer — bronze, silver, gold
+3. **Liquid Clustering** adapts table layout to query patterns — zero maintenance
+4. **Metric Views** define KPIs once in Unity Catalog — consumed consistently by Genie, dashboards, and SQL
+5. **AI/BI Dashboards** provide governed analytics built on Metric Views
+6. **Genie** puts natural language on top of governed data with domain-expert instructions
+7. **Databricks Apps** deliver custom UX without leaving the platform
+8. **Delta Sharing** distributes live data products without copies (Phase 2)
+9. **Unity Catalog** provides lineage, tags, and access control across everything
 
 ---
 
-## Adapting for Specific Customers
+## Appendix: Genie Questions to Ask
 
-| Customer | Lead with | Emphasize | De-emphasize |
-|---|---|---|---|
-| **Bloomberg Industry Group** | Regulatory + Internal | Data product curation, governance, customer distribution | Research (mention briefly) |
-| **Clarivate** | Research + Regulatory | Academic Q&A, citation analytics, research Genie | Internal analytics (mention briefly) |
-| **Generic data company** | All three equally | Platform breadth, deployability | None |
+### Research Assistant
+- "What are the most cited articles on CRISPR gene editing?"
+- "Show me recent meta-analyses on immunotherapy for lung cancer"
+- "Who are the top authors by h-index in machine learning for drug discovery?"
+- "What MeSH terms are trending in the last year?"
+- "Find preprints about single-cell RNA sequencing"
+- "Compare publication volume for breast cancer vs lung cancer research by year"
+
+### Internal Analytics
+- "What is our total pipeline value by stage?"
+- "Show revenue by product line for the last 4 quarters with YoY growth"
+- "Which customers have the lowest health scores?"
+- "What is our Closed Won conversion rate by region?"
+- "Compare API usage across products this quarter vs last quarter"
+- "What is the average deal size for Research Platform vs Regulatory Feed?"
+
+---
+
+## Appendix: Quick Reference
+
+| Asset | Location |
+|---|---|
+| Demo walkthrough notebook | `src/notebooks/01_demo_walkthrough.py` |
+| Research Pipeline | Pipelines UI → "Meridian Research Pipeline" |
+| Internal Pipeline | Pipelines UI → "Meridian Internal Pipeline" |
+| AI/BI Dashboard | Dashboards → "Meridian Internal Analytics" |
+| Meridian Portal App | `https://meridian-portal-7474650913311373.aws.databricksapps.com` |
+| Research Genie Space | ID: `01f118c5d7e01a32a58159a70e55160c` |
+| Internal Genie Space | ID: `01f118c5ddb81e3dba76005e6020b2bc` |
+| Catalog | `serverless_stable_k2zkdm_catalog` |
+| Schemas | `meridian_staging`, `meridian_research`, `meridian_internal` |
