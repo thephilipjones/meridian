@@ -2,6 +2,8 @@ resources:
   jobs:
     setup_job:
       name: "Meridian — Setup (Catalog, Schemas, Volumes)"
+      run_as:
+        user_name: ${workspace.current_user.userName}
       tasks:
         - task_key: run_setup
           notebook_task:
@@ -14,6 +16,8 @@ resources:
 
     data_gen_job:
       name: "Meridian — Generate Synthetic Data"
+      run_as:
+        user_name: ${workspace.current_user.userName}
       tasks:
         - task_key: gen_crm
           notebook_task:
@@ -30,12 +34,19 @@ resources:
             notebook_path: ../src/data_gen/generate_financials.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+        - task_key: gen_pubmed
+          notebook_task:
+            notebook_path: ../src/data_gen/generate_pubmed.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
       permissions:
         - level: CAN_MANAGE
           group_name: users
 
     data_fetch_job:
       name: "Meridian — Fetch Real Data (Optional)"
+      run_as:
+        user_name: ${workspace.current_user.userName}
       tasks:
         - task_key: fetch_pubmed
           notebook_task:
@@ -48,6 +59,8 @@ resources:
 
     run_pipelines_job:
       name: "Meridian — Run All Pipelines"
+      run_as:
+        user_name: ${workspace.current_user.userName}
       tasks:
         - task_key: run_research
           pipeline_task:

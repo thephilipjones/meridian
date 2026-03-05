@@ -2,6 +2,8 @@ resources:
   pipelines:
     research_pipeline:
       name: "Meridian Research Pipeline"
+      run_as:
+        user_name: ${workspace.current_user.userName}
       catalog: ${var.catalog_name}
       target: "meridian_research"
       development: true
@@ -26,6 +28,8 @@ resources:
 
     internal_pipeline:
       name: "Meridian Internal Pipeline"
+      run_as:
+        user_name: ${workspace.current_user.userName}
       catalog: ${var.catalog_name}
       target: "meridian_internal"
       development: true
