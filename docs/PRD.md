@@ -60,6 +60,7 @@ The platform is identical — only the demo narrative changes.
     |   - COPY INTO (batch file loads)                 |
     |   - Read stream from API-staged files            |
     |                                                  |
+    |  Gold tables use LIQUID CLUSTERING              |
     |  Expectations at silver for quality gates        |
     └───────────────────────┬─────────────────────────┘
                             |
@@ -84,11 +85,12 @@ The platform is identical — only the demo narrative changes.
     |   - Data catalog / dashboard content             |
     └──────────────────────┬──────────────────────────┘
                            |
-              ┌────────────┼────────────┐
-              v            v            v
-        Delta Sharing   Genie (x3)   AI/BI Dashboards
-        (live feeds     (per BU)     (internal
-         to customers)               analytics)
+              ┌────────────┼──────────────────┐
+              v            v                v
+        Delta Sharing   Genie (x3)     AI/BI Dashboards
+        (live feeds     (per BU,       (built on Metric
+         to customers)  Metric View-    Views — governed
+                        aware)          KPIs, no drift)
 ```
 
 ---
@@ -326,11 +328,12 @@ meridian-insights-demo/
   |-- resources/
   |     |-- pipelines.yml               # SDP pipeline definitions (3 pipelines)
   |     |-- jobs.yml                     # Orchestration jobs (data fetch, pipeline trigger)
+  |     |-- dashboards.yml             # AI/BI Dashboard definitions
   |     |-- genie_spaces.yml            # Genie space definitions (if API-manageable)
   |     |-- shares.yml                  # Delta Sharing share + recipient definitions
   |
   |-- src/
-  |     |-- pipelines/
+  |     |-- pipelines/                     # Gold tables use liquid clustering
   |     |     |-- regulatory/
   |     |     |     |-- bronze_sec_filings.py
   |     |     |     |-- bronze_fda_actions.py
@@ -393,11 +396,15 @@ meridian-insights-demo/
   |     |     |
   |     |     |-- app.yml               # Databricks App manifest
   |     |
+  |     |-- dashboards/
+  |     |     |-- internal_analytics.lvdash.json  # AI/BI Dashboard (built on Metric Views)
+  |     |
   |     |-- notebooks/
   |           |-- 00_setup.py            # Catalog/schema creation, volume setup
-  |           |-- 01_demo_walkthrough.py # Guided narrative notebook for live demos
+  |           |-- 01_demo_walkthrough.py # Guided narrative notebook (pipe syntax)
   |           |-- 02_delta_sharing.py    # Delta Sharing setup and consumer simulation
-  |           |-- 03_governance_tour.py  # Lineage, tags, RLS demo queries
+  |           |-- 03_governance_tour.py  # Lineage, tags, Metric Views, RLS queries
+  |           |-- 04_metric_views.py     # Create governed Metric Views on gold KPIs
   |
   |-- tests/
   |     |-- test_data_gen.py
@@ -514,8 +521,13 @@ Deliverables:
 - DAB scaffold with `databricks.yml` and environment targets
 - **Research pipeline** end-to-end (PubMed data, bronze/silver/gold, all three ingestion patterns demonstrated)
 - **Internal pipeline** with synthetic data (CRM, web events, financials)
+- **Liquid Clustering** on all gold tables (`cluster_by` replacing traditional partitioning — zero-maintenance adaptive layout)
+- **Metric Views** for internal gold KPIs (revenue, pipeline, health metrics defined as governed UC objects in YAML — consumed natively by Genie and AI/BI Dashboards)
+- **AI/BI Dashboards** for the Internal Analytics view (revenue trend, pipeline funnel, customer health — built on Metric Views)
 - Databricks App with profile switcher and two views (Research, Internal)
 - One Genie space (Research Assistant)
+- **SQL pipe syntax** (`|>`) used in demo walkthrough and governance tour notebooks to showcase modern Databricks SQL
+- **DAB best practices:** `run_as` and `permissions` blocks on all jobs and pipelines
 - Setup and demo walkthrough notebooks
 - `DEMO_SCRIPT.md` with talking points
 
@@ -529,16 +541,19 @@ Deliverables:
 - Internal Analytics Genie space
 - Customer Regulatory view in the App (catalog, scoped Genie, Delta Sharing info)
 - Delta Sharing setup (share, recipient, consumer notebook)
-- Governance tour notebook (lineage, tags, RLS)
+- Governance tour notebook (lineage, tags, RLS with **row filters and column masks** via SQL syntax)
+- **Zerobus Ingest** for web analytics events (direct gRPC ingestion into Delta tables — replaces staging volume pattern for real-time sources)
+- **System Tables** meta-analytics schema (materialized views over `system.access.audit` and `system.billing.usage` filtered to the `meridian` catalog)
+- **Vector Search** index on research article abstracts for RAG-powered Research Q&A
 
 ### Phase 3 — Advanced Scenarios
 
 Deliverables:
 - Clean Rooms demo (requires second workspace, documented manual setup)
-- AI/BI Dashboards for internal analytics view
+- **Agent Bricks** Knowledge Assistant for Research Q&A (RAG over Vector Search index + Foundation Model API)
 - NLP enrichment via Model Serving (entity extraction in the silver layer)
 - Scheduled orchestration via Databricks Workflows (periodic data fetch + pipeline refresh)
-- Consumption analytics via System Tables (meta-analytics: who queries what)
+- **Lakeflow Connect** evaluation for managed connectors (replace custom fetch scripts where connectors exist)
 
 ---
 

@@ -33,7 +33,7 @@ def get_sales_pipeline(
         params["region"] = region
 
     where = (" AND ".join(clauses)) if clauses else "1=1"
-    query = f"SELECT * FROM {_catalog}.internal.sales_pipeline WHERE {where} ORDER BY stage"
+    query = f"SELECT * FROM {_catalog}.meridian_internal.sales_pipeline WHERE {where} ORDER BY stage"
     return execute_query(query, params or None)
 
 
@@ -55,7 +55,7 @@ def get_product_usage(
         params["product"] = product
 
     where = (" AND ".join(clauses)) if clauses else "1=1"
-    query = f"SELECT * FROM {_catalog}.internal.product_usage WHERE {where} ORDER BY period DESC LIMIT {int(limit)}"
+    query = f"SELECT * FROM {_catalog}.meridian_internal.product_usage WHERE {where} ORDER BY period DESC LIMIT {int(limit)}"
     return execute_query(query, params or None)
 
 
@@ -76,7 +76,7 @@ def get_revenue_summary(
         params["product_line"] = product_line
 
     where = (" AND ".join(clauses)) if clauses else "1=1"
-    query = f"SELECT * FROM {_catalog}.internal.revenue_summary WHERE {where} ORDER BY fiscal_year, fiscal_quarter"
+    query = f"SELECT * FROM {_catalog}.meridian_internal.revenue_summary WHERE {where} ORDER BY fiscal_year, fiscal_quarter"
     return execute_query(query, params or None)
 
 
@@ -94,5 +94,5 @@ def get_customer_health(
         params["health_tier"] = health_tier
 
     where = (" AND ".join(clauses)) if clauses else "1=1"
-    query = f"SELECT * FROM {_catalog}.internal.customer_health WHERE {where} ORDER BY arr DESC LIMIT {int(limit)}"
+    query = f"SELECT * FROM {_catalog}.meridian_internal.customer_health WHERE {where} ORDER BY arr DESC LIMIT {int(limit)}"
     return execute_query(query, params or None)

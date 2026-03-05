@@ -26,9 +26,8 @@ databricks bundle run data_gen_job -t dev
 # 6. Fetch real data (optional — demo works with synthetic only)
 databricks bundle run data_fetch_job -t dev
 
-# 7. Run pipelines
-databricks bundle run research_pipeline -t dev
-databricks bundle run internal_pipeline -t dev
+# 7. Run pipelines and create metric views
+databricks bundle run run_pipelines_job -t dev
 
 # 8. Deploy the Meridian Portal app
 databricks bundle run deploy_app -t dev
@@ -49,12 +48,13 @@ Three business units, one platform:
 ```
 src/
   common/          # Shared config, schemas — single source of truth
-  pipelines/       # SDP pipeline files (bronze/silver/gold per BU)
+  pipelines/       # SDP pipeline files (bronze/silver/gold per BU, liquid clustering)
   data_fetch/      # Scripts to fetch real public data (PubMed, EDGAR, etc.)
   data_gen/        # Synthetic data generators (Faker-based)
+  dashboards/      # AI/BI Dashboard definitions (Lakeview JSON)
   app/             # Databricks App (FastAPI backend + React frontend)
-  notebooks/       # Setup, demo walkthrough, governance tour
-resources/         # DAB resource definitions (pipelines, jobs, genie)
+  notebooks/       # Setup, demo walkthrough, metric views, governance tour
+resources/         # DAB resource definitions (pipelines, jobs, dashboards, genie)
 tests/             # Unit tests for data gen and pipeline expectations
 docs/              # PRD, demo script, deployment guide
 ```
