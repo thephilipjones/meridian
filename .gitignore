@@ -18,9 +18,10 @@ env/
 *.log
 
 node_modules/
+package-lock.json
 
-# NOTE: frontend/dist is NOT ignored — required for Databricks App deploy
-# src/app/frontend/dist/
+# frontend/dist is built locally but not committed — DAB syncs from disk
+src/app/frontend/dist/
 
 .databricks/
 .bundle/
