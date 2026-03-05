@@ -1,0 +1,48 @@
+resources:
+  jobs:
+    setup_job:
+      name: "Meridian — Setup (Catalog, Schemas, Volumes)"
+      tasks:
+        - task_key: run_setup
+          notebook_task:
+            notebook_path: ../src/notebooks/00_setup.py
+
+    data_gen_job:
+      name: "Meridian — Generate Synthetic Data"
+      tasks:
+        - task_key: gen_crm
+          python_wheel_task:
+            package_name: meridian
+            entry_point: src.data_gen.generate_crm:main
+          # Fallback: use notebook_task if wheel isn't built
+          notebook_task:
+            notebook_path: ../src/data_gen/generate_crm.py
+        - task_key: gen_web_events
+          python_wheel_task:
+            package_name: meridian
+            entry_point: src.data_gen.generate_web_events:main
+          notebook_task:
+            notebook_path: ../src/data_gen/generate_web_events.py
+        - task_key: gen_financials
+          python_wheel_task:
+            package_name: meridian
+            entry_point: src.data_gen.generate_financials:main
+          notebook_task:
+            notebook_path: ../src/data_gen/generate_financials.py
+
+    data_fetch_job:
+      name: "Meridian — Fetch Real Data (Optional)"
+      tasks:
+        - task_key: fetch_pubmed
+          notebook_task:
+            notebook_path: ../src/data_fetch/fetch_pubmed.py
+
+    run_pipelines_job:
+      name: "Meridian — Run All Pipelines"
+      tasks:
+        - task_key: run_research
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.research_pipeline.id}
+        - task_key: run_internal
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.internal_pipeline.id}

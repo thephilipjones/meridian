@@ -1,0 +1,30 @@
+bundle:
+  name: meridian-insights-demo
+
+variables:
+  catalog_name:
+    description: Unity Catalog catalog name for all Meridian assets
+    default: meridian
+  warehouse_id:
+    description: SQL warehouse ID for Genie and app queries
+  staging_volume_path:
+    description: Base path for staging volumes
+    default: /Volumes/${var.catalog_name}/staging
+
+workspace:
+  root_path: /Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: ${workspace.host}
+
+  demo:
+    workspace:
+      host: ${workspace.host}
+
+  customer:
+    workspace:
+      host: ${workspace.host}

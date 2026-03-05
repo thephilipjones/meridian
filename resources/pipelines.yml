@@ -1,0 +1,41 @@
+resources:
+  pipelines:
+    research_pipeline:
+      name: "Meridian Research Pipeline"
+      target: "${var.catalog_name}.research"
+      development: true
+      channel: PREVIEW
+      libraries:
+        - notebook:
+            path: ../src/pipelines/research/bronze_pubmed.py
+        - notebook:
+            path: ../src/pipelines/research/bronze_arxiv.py
+        - notebook:
+            path: ../src/pipelines/research/bronze_crossref.py
+        - notebook:
+            path: ../src/pipelines/research/silver_research.py
+        - notebook:
+            path: ../src/pipelines/research/gold_research.py
+      configuration:
+        meridian.catalog: ${var.catalog_name}
+
+    internal_pipeline:
+      name: "Meridian Internal Pipeline"
+      target: "${var.catalog_name}.internal"
+      development: true
+      channel: PREVIEW
+      libraries:
+        - notebook:
+            path: ../src/pipelines/internal/bronze_crm.py
+        - notebook:
+            path: ../src/pipelines/internal/bronze_web_events.py
+        - notebook:
+            path: ../src/pipelines/internal/bronze_financials.py
+        - notebook:
+            path: ../src/pipelines/internal/silver_internal.py
+        - notebook:
+            path: ../src/pipelines/internal/gold_internal.py
+      configuration:
+        meridian.catalog: ${var.catalog_name}
+
+    # TODO Phase 2: Add regulatory_pipeline

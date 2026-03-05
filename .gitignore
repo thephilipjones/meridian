@@ -1,0 +1,37 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+.venv/
+venv/
+env/
+
+.env
+.env.local
+
+*.log
+
+node_modules/
+
+# NOTE: frontend/dist is NOT ignored — required for Databricks App deploy
+# src/app/frontend/dist/
+
+.databricks/
+.bundle/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.DS_Store
+Thumbs.db
+
+*.tfstate
+*.tfstate.backup
+.terraform/
