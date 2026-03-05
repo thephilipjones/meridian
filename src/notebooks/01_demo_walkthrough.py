@@ -41,12 +41,12 @@ display(spark.sql(f"SHOW VOLUMES IN {catalog}.meridian_staging"))
 # COMMAND ----------
 
 # Peek at raw PubMed JSON files in the staging volume
-dbutils.fs.ls(f"/Volumes/{catalog}/staging/pubmed/")
+dbutils.fs.ls(f"/Volumes/{catalog}/meridian_staging/pubmed/")
 
 # COMMAND ----------
 
 # Peek at raw CRM CSV files
-dbutils.fs.ls(f"/Volumes/{catalog}/staging/crm/")
+dbutils.fs.ls(f"/Volumes/{catalog}/meridian_staging/crm/")
 
 # COMMAND ----------
 

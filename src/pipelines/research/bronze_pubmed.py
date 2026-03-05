@@ -1,19 +1,20 @@
 # Databricks notebook source
-"""Bronze layer: ingest raw PubMed article metadata.
+"""Bronze layer: ingest raw PubMed article metadata via Auto Loader.
 
-Phase 1 stub — creates an empty table with the correct schema so
-downstream silver/gold tables can resolve. Run data_fetch_job to
-populate the staging volume, then swap this to Auto Loader ingestion.
-
-TODO Phase 2: Switch to Auto Loader from /Volumes/.../meridian_staging/pubmed
+Reads JSON-lines files from the PubMed staging volume, tracking files
+for incremental ingestion on re-runs.
 """
 
 from pyspark import pipelines as dp
+from pyspark.sql import functions as F
+
+CATALOG = spark.conf.get("meridian.catalog")  # noqa: F821
+SCHEMA_STAGING = "meridian_staging"
 
 
 @dp.table(
     name="raw_pubmed_articles",
-    comment="Raw PubMed article metadata (stub — run data_fetch_job to populate)",
+    comment="Raw PubMed article metadata ingested via Auto Loader from staging volume",
     table_properties={
         "quality": "bronze",
         "meridian.business_unit": "research",
@@ -21,10 +22,11 @@ from pyspark import pipelines as dp
     },
 )
 def raw_pubmed_articles():
-    return spark.createDataFrame(  # noqa: F821
-        [],
-        "pmid STRING, doi STRING, title STRING, abstract STRING, "
-        "authors_raw STRING, journal STRING, publication_date STRING, "
-        "mesh_terms_raw STRING, publication_types STRING, "
-        "source STRING, _ingest_timestamp TIMESTAMP, _source_file STRING",
+    return (
+        spark.readStream.format("cloudFiles")  # noqa: F821
+        .option("cloudFiles.format", "json")
+        .option("cloudFiles.inferColumnTypes", "true")
+        .load(f"/Volumes/{CATALOG}/{SCHEMA_STAGING}/pubmed")
+        .withColumn("_ingest_timestamp", F.current_timestamp())
+        .withColumn("_source_file", F.col("_metadata.file_path"))
     )

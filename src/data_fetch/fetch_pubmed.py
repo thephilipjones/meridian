@@ -8,6 +8,8 @@ volume for Auto Loader ingestion.
 Rate limit: 3 requests/sec without API key, 10 with (set NCBI_API_KEY env var).
 """
 
+# COMMAND ----------
+
 import json
 import os
 import time
@@ -16,7 +18,10 @@ from xml.etree import ElementTree as ET
 
 import requests
 
-from src.common.config import STAGING_PATHS
+dbutils.widgets.text("catalog_name", "serverless_stable_k2zkdm_catalog")
+_catalog = dbutils.widgets.get("catalog_name")
+
+STAGING_PATH = f"/Volumes/{_catalog}/meridian_staging/pubmed"
 
 EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 SEARCH_URL = f"{EUTILS_BASE}/esearch.fcgi"
@@ -26,6 +31,8 @@ DEFAULT_QUERY = "biomedical[MeSH Terms]"
 BATCH_SIZE = 200
 MAX_RESULTS = 5000
 RECORDS_PER_FILE = 500
+
+# COMMAND ----------
 
 
 def _rate_delay() -> float:
@@ -110,7 +117,6 @@ def _parse_pubmed_xml(xml_text: str) -> list[dict]:
         abstract_elem = article_node.find("Abstract/AbstractText")
         journal_elem = article_node.find("Journal/Title")
 
-        # Authors
         authors = []
         author_list = article_node.find("AuthorList")
         if author_list is not None:
@@ -120,7 +126,6 @@ def _parse_pubmed_xml(xml_text: str) -> list[dict]:
                 if last:
                     authors.append(f"{last}, {first}".strip(", "))
 
-        # MeSH terms
         mesh_list = medline.find("MeshHeadingList")
         mesh_terms = []
         if mesh_list is not None:
@@ -128,19 +133,16 @@ def _parse_pubmed_xml(xml_text: str) -> list[dict]:
                 if heading.text:
                     mesh_terms.append(heading.text)
 
-        # Publication types
         pub_types = []
         for pt in article_node.findall("PublicationTypeList/PublicationType"):
             if pt.text:
                 pub_types.append(pt.text)
 
-        # DOI
         doi = None
         for eid in article_elem.findall(".//ArticleId"):
             if eid.get("IdType") == "doi":
                 doi = eid.text
 
-        # Date
         pub_date = article_node.find("Journal/JournalIssue/PubDate")
         date_str = ""
         if pub_date is not None:
@@ -181,21 +183,13 @@ def write_json_files(articles: list[dict], output_path: str) -> list[str]:
 
     return filepaths
 
+# COMMAND ----------
 
-def main(
-    query: str = DEFAULT_QUERY,
-    max_results: int = MAX_RESULTS,
-    output_path: str | None = None,
-):
-    path = output_path or STAGING_PATHS["pubmed"]
-    print(f"Searching PubMed: '{query}' (max {max_results} results)...")
-    pmids = search_pmids(query, max_results)
-    print(f"Found {len(pmids)} PMIDs, fetching metadata...")
-    articles = fetch_articles(pmids)
-    filepaths = write_json_files(articles, path)
-    print(f"Wrote {len(articles)} articles across {len(filepaths)} files -> {path}")
-    return articles
-
-
-if __name__ == "__main__":
-    main()
+query = DEFAULT_QUERY
+path = STAGING_PATH
+print(f"Searching PubMed: '{query}' (max {MAX_RESULTS} results)...")
+pmids = search_pmids(query, MAX_RESULTS)
+print(f"Found {len(pmids)} PMIDs, fetching metadata...")
+articles = fetch_articles(pmids)
+filepaths = write_json_files(articles, path)
+print(f"Wrote {len(articles)} articles across {len(filepaths)} files -> {path}")
