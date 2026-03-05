@@ -1,0 +1,46 @@
+# Databricks bundle sync exclusions.
+# When this file exists, the CLI uses it INSTEAD of .gitignore for sync.
+# This lets us keep frontend/dist/ out of git (build artifact) while
+# still syncing it to the workspace for the Databricks App.
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+/dist/
+build/
+.eggs/
+*.egg
+
+.venv/
+venv/
+env/
+
+.env
+.env.local
+
+*.log
+
+node_modules/
+package-lock.json
+
+# NOTE: src/app/frontend/dist/ is intentionally NOT excluded here.
+# It must be synced so the Databricks App serves the built React frontend.
+# Build it locally before deploying: cd src/app/frontend && npm run build
+
+.databricks/
+.bundle/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.DS_Store
+Thumbs.db
+
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+.git/

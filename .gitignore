@@ -20,7 +20,8 @@ env/
 node_modules/
 package-lock.json
 
-# frontend/dist is built locally but not committed — DAB syncs from disk
+# frontend/dist is built locally but not committed — .databricksignore
+# allows DAB to sync it while git continues to ignore it
 src/app/frontend/dist/
 
 .databricks/
