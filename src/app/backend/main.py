@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.profiles import get_all_profiles
-from backend.routers import analytics, catalog, research, sharing
+from backend.routers import analytics, catalog, genie, research, sharing
 
 app = FastAPI(
     title="Meridian Portal",
@@ -32,6 +32,7 @@ app.include_router(analytics.router, prefix="/api/analytics", tags=["Internal An
 app.include_router(research.router, prefix="/api/research", tags=["Research"])
 app.include_router(catalog.router, prefix="/api/catalog", tags=["Data Catalog"])
 app.include_router(sharing.router, prefix="/api/sharing", tags=["Delta Sharing"])
+app.include_router(genie.router, prefix="/api/genie", tags=["Genie"])
 
 
 @app.get("/api/profiles")
@@ -43,6 +44,7 @@ def list_profiles():
 @app.get("/api/health")
 def health_check():
     return {"status": "ok", "app": "meridian-portal"}
+
 
 
 def _find_frontend_dist() -> Path | None:

@@ -38,7 +38,7 @@ def list_data_products(subscription_tier: str = Query("sec_only")):
             AND t.table_schema = c.table_schema
             AND t.table_name = c.table_name
         WHERE t.table_schema = 'meridian_regulatory'
-            AND t.table_type = 'TABLE'
+            AND t.table_type IN ('TABLE', 'MATERIALIZED_VIEW')
             AND t.table_name IN ('regulatory_actions', 'patent_landscape',
                                  'company_entities', 'company_risk_signals')
         GROUP BY t.table_name, t.comment, t.last_altered

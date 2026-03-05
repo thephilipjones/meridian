@@ -7,10 +7,8 @@ command:
   - "8000"
 
 env:
-  - name: DATABRICKS_SERVER_HOSTNAME
-    valueFrom: "sql_warehouse.server_hostname"
   - name: DATABRICKS_HTTP_PATH
-    valueFrom: "sql_warehouse.http_path"
+    value: "/sql/1.0/warehouses/e8eadc734c07e7f5"
   - name: MERIDIAN_CATALOG
     value: "serverless_stable_k2zkdm_catalog"
   - name: RESEARCH_GENIE_SPACE_ID

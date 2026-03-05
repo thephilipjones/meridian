@@ -1,7 +1,8 @@
 """Databricks SQL connector wrapper for the Meridian Portal app.
 
-Reads warehouse configuration from environment variables set by the
-Databricks App runtime. Returns query results as lists of dicts.
+Uses the service principal OAuth credentials (DATABRICKS_HOST,
+DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET) injected automatically
+by the Databricks App runtime, plus DATABRICKS_HTTP_PATH from app.yaml.
 """
 
 import os
@@ -9,19 +10,25 @@ from contextlib import contextmanager
 from typing import Any
 
 from databricks import sql as dbsql
+from databricks.sdk import WorkspaceClient
 
 
-def _connection_params() -> dict:
-    return {
-        "server_hostname": os.environ["DATABRICKS_SERVER_HOSTNAME"],
-        "http_path": os.environ["DATABRICKS_HTTP_PATH"],
-        "access_token": os.environ.get("DATABRICKS_TOKEN", ""),
-    }
+def _get_token() -> str:
+    w = WorkspaceClient(
+        host=f"https://{os.environ['DATABRICKS_HOST']}",
+        client_id=os.environ["DATABRICKS_CLIENT_ID"],
+        client_secret=os.environ["DATABRICKS_CLIENT_SECRET"],
+    )
+    return w.config.authenticate()["Authorization"].removeprefix("Bearer ")
 
 
 @contextmanager
 def get_connection():
-    conn = dbsql.connect(**_connection_params())
+    conn = dbsql.connect(
+        server_hostname=os.environ["DATABRICKS_HOST"],
+        http_path=os.environ["DATABRICKS_HTTP_PATH"],
+        access_token=_get_token(),
+    )
     try:
         yield conn
     finally:
