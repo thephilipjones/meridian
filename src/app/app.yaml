@@ -1,0 +1,21 @@
+command:
+  - uvicorn
+  - src.app.backend.main:app
+  - --host
+  - 0.0.0.0
+  - --port
+  - "8000"
+
+env:
+  - name: DATABRICKS_SERVER_HOSTNAME
+    value_from: "resources.sql_warehouse.server_hostname"
+  - name: DATABRICKS_HTTP_PATH
+    value_from: "resources.sql_warehouse.http_path"
+  - name: MERIDIAN_CATALOG
+    value: "meridian"
+
+resources:
+  - name: sql_warehouse
+    sql_warehouse:
+      warehouse_id: "${var.warehouse_id}"
+      permission: CAN_USE
