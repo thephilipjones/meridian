@@ -21,19 +21,43 @@ SOURCE_TABLE = f"{catalog}.meridian_research.articles_vs_source"
 # MAGIC ## Refresh VS Source Table
 # MAGIC
 # MAGIC Gold tables are materialized views; the VS source table is a
-# MAGIC managed Delta snapshot that needs to be refreshed before sync.
+# MAGIC managed Delta snapshot. Uses MERGE to add new articles while
+# MAGIC preserving AI-enriched abstracts (from `10_abstract_enrichment.py`).
+# MAGIC Only non-abstract columns are updated for existing rows.
 
 # COMMAND ----------
 
-spark.sql(f"""
-    CREATE OR REPLACE TABLE {SOURCE_TABLE}
-    TBLPROPERTIES (delta.enableChangeDataFeed = true)
-    AS SELECT article_id, doi, title, abstract, journal,
-              publication_date, publication_year, source,
-              is_preprint, publication_type, citation_count
-    FROM {catalog}.meridian_research.articles
-""")
-print(f"Refreshed '{SOURCE_TABLE}'")
+table_exists = spark.catalog.tableExists(SOURCE_TABLE)
+
+if not table_exists:
+    spark.sql(f"""
+        CREATE TABLE {SOURCE_TABLE}
+        TBLPROPERTIES (delta.enableChangeDataFeed = true)
+        AS SELECT article_id, doi, title, abstract, journal,
+                  publication_date, publication_year, source,
+                  is_preprint, publication_type, citation_count
+        FROM {catalog}.meridian_research.articles
+    """)
+    print(f"Created '{SOURCE_TABLE}' (initial load)")
+else:
+    spark.sql(f"""
+        MERGE INTO {SOURCE_TABLE} t
+        USING (
+            SELECT article_id, doi, title, abstract, journal,
+                   publication_date, publication_year, source,
+                   is_preprint, publication_type, citation_count
+            FROM {catalog}.meridian_research.articles
+        ) s
+        ON t.article_id = s.article_id
+        WHEN MATCHED THEN UPDATE SET
+            t.doi = s.doi, t.title = s.title,
+            t.journal = s.journal, t.publication_date = s.publication_date,
+            t.publication_year = s.publication_year, t.source = s.source,
+            t.is_preprint = s.is_preprint, t.publication_type = s.publication_type,
+            t.citation_count = s.citation_count
+        WHEN NOT MATCHED THEN INSERT *
+    """)
+    print(f"Merged updates into '{SOURCE_TABLE}' (abstracts preserved)")
 
 # COMMAND ----------
 
