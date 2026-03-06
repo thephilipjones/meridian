@@ -97,16 +97,19 @@ def cleaned_authors():
 
 @dp.table(
     name="cleaned_citations",
-    comment="[Phase 2] Citation links from Crossref — currently empty",
+    comment="Deduplicated citation links from Crossref",
     table_properties={
         "quality": "silver",
         "meridian.business_unit": "research",
     },
 )
+@dp.expect_or_drop("valid_citing_doi", "citing_doi IS NOT NULL AND length(citing_doi) > 0")
+@dp.expect_or_drop("valid_cited_doi", "cited_doi IS NOT NULL AND length(cited_doi) > 0")
 def cleaned_citations():
-    return spark.createDataFrame(  # noqa: F821
-        [],
-        "citing_doi STRING, cited_doi STRING, source STRING",
+    return (
+        dp.read("raw_crossref_citations")
+        .dropDuplicates(["citing_doi", "cited_doi"])
+        .select("citing_doi", "cited_doi", "source")
     )
 
 

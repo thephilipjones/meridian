@@ -1,18 +1,21 @@
 """Research API endpoints for the Dr. Anika Park view.
 
-Provides article search, author lookup, and citation exploration
-scoped to the research business unit.
+Provides article search, author lookup, citation exploration,
+and semantic search via Vector Search — all scoped to the research
+business unit.
 """
 
+import logging
 import os
 
-from fastapi import APIRouter, Query
-
 from backend.db import execute_query
+from fastapi import APIRouter, Query
 
 router = APIRouter()
 
+log = logging.getLogger(__name__)
 _catalog = os.environ.get("MERIDIAN_CATALOG", "serverless_stable_k2zkdm_catalog")
+_vs_index = f"{_catalog}.meridian_research.articles_vs_index"
 
 
 @router.get("/articles")
@@ -94,6 +97,75 @@ def search_articles(
         f"ORDER BY citation_count DESC LIMIT {int(limit)}"
     )
     return execute_query(query, {"search_pattern": f"%{q.lower()}%"})
+
+
+@router.get("/semantic-search")
+def semantic_search(
+    q: str = Query(..., description="Natural language research question"),
+    limit: int = Query(10, le=50),
+):
+    """Semantic search over article abstracts using Vector Search.
+
+    Falls back to LIKE-based keyword search if the vector index is
+    unavailable (e.g. not yet provisioned or endpoint is down).
+    """
+    try:
+        from databricks.sdk import WorkspaceClient
+
+        w = WorkspaceClient(
+            host=f"https://{os.environ['DATABRICKS_HOST']}",
+            client_id=os.environ["DATABRICKS_CLIENT_ID"],
+            client_secret=os.environ["DATABRICKS_CLIENT_SECRET"],
+        )
+        results = w.vector_search_indexes.query_index(
+            index_name=_vs_index,
+            columns=[
+                "article_id", "doi", "title", "abstract", "journal",
+                "publication_date", "publication_year", "source",
+                "is_preprint", "publication_type", "citation_count",
+            ],
+            query_text=q,
+            num_results=limit,
+        )
+        columns = results.result.column_names
+        articles = []
+        for row in results.result.data_array:
+            article = dict(zip(columns, row))
+            article["similarity_score"] = row[-1]
+            articles.append(article)
+        return {"mode": "semantic", "results": articles}
+    except Exception as e:
+        log.warning("Vector Search unavailable, falling back to keyword search: %s", e)
+        keyword_results = search_articles(q=q, limit=limit)
+        return {"mode": "keyword", "results": keyword_results}
+
+
+@router.get("/citations")
+def get_citations(
+    doi: str | None = Query(None, description="Search citing or cited DOI"),
+    title: str | None = Query(None, description="Search in citing or cited title"),
+    limit: int = Query(50, le=500),
+):
+    """Citation relationships between articles."""
+    clauses = []
+    params: dict = {}
+
+    if doi:
+        clauses.append("(citing_doi = %(doi)s OR cited_doi = %(doi)s)")
+        params["doi"] = doi
+    if title:
+        clauses.append(
+            "(lower(citing_title) LIKE %(title_pat)s OR lower(cited_title) LIKE %(title_pat)s)"
+        )
+        params["title_pat"] = f"%{title.lower()}%"
+
+    where = (" AND ".join(clauses)) if clauses else "1=1"
+    query = (
+        f"SELECT citing_doi, cited_doi, citing_title, cited_title, citing_year, cited_year "
+        f"FROM {_catalog}.meridian_research.citations WHERE {where} "
+        f"ORDER BY citing_year DESC LIMIT {int(limit)}"
+    )
+    return execute_query(query, params or None)
 
 
 @router.get("/mesh-terms")

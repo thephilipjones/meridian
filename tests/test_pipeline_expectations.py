@@ -64,3 +64,88 @@ class TestFinancialExpectations:
         rows = generate_financials()
         for row in rows:
             assert row["revenue"] >= 0
+
+
+class TestSecFilingExpectations:
+    """Validate SEC filing data against silver pipeline expectations."""
+
+    def test_filing_id_not_null(self):
+        from src.data_gen.generate_sec_filings import generate_filings
+
+        filings = generate_filings(100)
+        for filing in filings:
+            assert filing["filing_id"] is not None
+            assert len(filing["filing_id"]) > 0
+
+    def test_company_name_not_null(self):
+        from src.data_gen.generate_sec_filings import generate_filings
+
+        filings = generate_filings(100)
+        for filing in filings:
+            assert filing["company_name"] is not None
+            assert len(filing["company_name"]) > 0
+
+    def test_filing_date_format(self):
+        from datetime import datetime
+
+        from src.data_gen.generate_sec_filings import generate_filings
+
+        filings = generate_filings(100)
+        for filing in filings:
+            datetime.strptime(filing["filing_date"], "%Y-%m-%d")
+
+
+class TestFdaActionExpectations:
+    """Validate FDA action data against silver pipeline expectations."""
+
+    def test_action_id_not_null(self):
+        from src.data_gen.generate_fda_actions import generate_actions
+
+        actions = generate_actions(100)
+        for action in actions:
+            assert action["action_id"] is not None
+            assert len(action["action_id"]) > 0
+
+    def test_company_name_not_null(self):
+        from src.data_gen.generate_fda_actions import generate_actions
+
+        actions = generate_actions(100)
+        for action in actions:
+            assert action["company_name"] is not None
+
+    def test_recall_date_format(self):
+        from datetime import datetime
+
+        from src.data_gen.generate_fda_actions import generate_actions
+
+        actions = generate_actions(100)
+        for action in actions:
+            datetime.strptime(action["recall_initiation_date"], "%Y-%m-%d")
+
+
+class TestPatentExpectations:
+    """Validate patent data against silver pipeline expectations."""
+
+    def test_patent_number_not_null(self):
+        from src.data_gen.generate_patents import generate_patents
+
+        patents = generate_patents(100)
+        for patent in patents:
+            assert patent["patent_number"] is not None
+            assert patent["patent_number"].startswith("US")
+
+    def test_title_not_null(self):
+        from src.data_gen.generate_patents import generate_patents
+
+        patents = generate_patents(100)
+        for patent in patents:
+            assert patent["title"] is not None
+            assert len(patent["title"]) > 0
+
+    def test_abstract_not_null(self):
+        from src.data_gen.generate_patents import generate_patents
+
+        patents = generate_patents(100)
+        for patent in patents:
+            assert patent["abstract"] is not None
+            assert len(patent["abstract"]) > 0

@@ -95,3 +95,38 @@ def get_customer_health(
     where = (" AND ".join(clauses)) if clauses else "1=1"
     query = f"SELECT * FROM {_catalog}.meridian_internal.customer_health WHERE {where} ORDER BY arr DESC LIMIT {int(limit)}"
     return execute_query(query, params or None)
+
+
+@router.get("/query-activity")
+def get_query_activity(days: int = Query(30, le=90)):
+    """Daily query activity against the Meridian catalog from system tables."""
+    query = (
+        f"SELECT event_date, user_email, action_name, query_count "
+        f"FROM {_catalog}.meridian_system.query_activity "
+        f"WHERE event_date >= CURRENT_DATE - INTERVAL {int(days)} DAYS "
+        f"ORDER BY event_date DESC, query_count DESC"
+    )
+    return execute_query(query)
+
+
+@router.get("/table-access")
+def get_table_access(limit: int = Query(20, le=100)):
+    """Most-accessed tables across Meridian schemas."""
+    query = (
+        f"SELECT schema_name, table_name, unique_users, access_count, last_accessed "
+        f"FROM {_catalog}.meridian_system.table_access_patterns "
+        f"ORDER BY access_count DESC LIMIT {int(limit)}"
+    )
+    return execute_query(query)
+
+
+@router.get("/compute-consumption")
+def get_compute_consumption(days: int = Query(30, le=90)):
+    """Daily compute consumption (DBUs) by SKU."""
+    query = (
+        f"SELECT usage_date, sku_name, usage_unit, total_dbus "
+        f"FROM {_catalog}.meridian_system.compute_consumption "
+        f"WHERE usage_date >= CURRENT_DATE - INTERVAL {int(days)} DAYS "
+        f"ORDER BY usage_date DESC, total_dbus DESC"
+    )
+    return execute_query(query)

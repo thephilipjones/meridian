@@ -1,14 +1,16 @@
 # Genie Space Definitions for Meridian Insights
 #
-# NOTE: As of March 2026, Genie spaces may not be fully declarative in DABs.
-# If this YAML is not supported by your bundle version, use the post-deploy
-# setup instructions in docs/DEPLOYMENT.md to create spaces manually.
+# NOTE: As of March 2026, Genie spaces are not fully declarative in DABs.
+# This YAML is documentation only — spaces are managed via REST API.
+# See docs/DEPLOYMENT.md for create/update instructions and
+# src/notebooks/07_genie_enrichment.py for sample questions and SQL snippets.
 #
-# Each space definition below documents the tables and custom instructions
-# needed, regardless of whether they're deployed via DAB or manual setup.
+# Each space includes: tables, custom_instructions, and sample_questions.
+# These are applied via PATCH /api/2.0/genie/spaces/{space_id}.
 
 genie_spaces:
   research_assistant:
+    space_id: "01f118c5d7e01a32a58159a70e55160c"
     name: "Meridian Research Assistant"
     description: "Natural language Q&A over 36M+ biomedical articles, citations, and MeSH terms"
     tables:
@@ -34,9 +36,15 @@ genie_spaces:
       - When multiple relevant articles exist, summarize the consensus and
         note any conflicting findings.
       - Format DOIs as clickable links when possible.
+    sample_questions:
+      - "What are the most-cited papers on CRISPR off-target effects?"
+      - "Show me meta-analyses published in 2025 on immunotherapy"
+      - "Who are the top 10 authors by h-index in our database?"
+      - "What MeSH terms have the most articles?"
+      - "How many preprints vs peer-reviewed articles do we have by year?"
 
-  # TODO Phase 2: Regulatory Intelligence
   regulatory_intelligence:
+    space_id: "01f118ce34db1cfeb9085c37cea33f8d"
     name: "Meridian Regulatory Intelligence"
     description: "Natural language Q&A over SEC filings, FDA actions, and patent data"
     tables:
@@ -55,9 +63,15 @@ genie_spaces:
       - If a question is ambiguous between SEC and FDA data, ask for clarification.
       - Format monetary values in USD with appropriate scale (thousands,
         millions, billions).
+    sample_questions:
+      - "How many regulatory actions by source agency in the last year?"
+      - "Which companies have the most patent filings?"
+      - "Show me high-risk companies with risk signals"
+      - "What types of SEC filings are most common?"
+      - "Show FDA recall actions by classification and status"
 
-  # TODO Phase 2: Internal Analytics
   internal_analytics:
+    space_id: "01f118c5ddb81e3dba76005e6020b2bc"
     name: "Meridian Internal Analytics"
     description: "Revenue, pipeline, product usage, and customer health analytics"
     tables:
@@ -75,3 +89,9 @@ genie_spaces:
       - Product names: "Regulatory Feed," "Research Platform," "Patent Monitor,"
         "Custom Analytics."
       - When showing pipeline data, include stage conversion rates.
+    sample_questions:
+      - "What is our total pipeline value by stage?"
+      - "Show me revenue by product line for FY2025"
+      - "Which accounts are at risk based on health score?"
+      - "What is the average deal size by region?"
+      - "Which products have the highest error rates?"

@@ -36,7 +36,7 @@ PROFILES: dict[str, Profile] = {
         avatar_initials="SC",
         allowed_schemas=["internal", "regulatory", "research"],
         genie_space_id=os.environ.get("INTERNAL_GENIE_SPACE_ID"),
-        nav_tabs=["Sales Dashboard", "Product Usage", "Genie"],
+        nav_tabs=["Sales Dashboard", "Product Usage", "Platform Analytics", "Genie"],
     ),
     "james": Profile(
         id="james",
@@ -59,7 +59,7 @@ PROFILES: dict[str, Profile] = {
         avatar_initials="AP",
         allowed_schemas=["research"],
         genie_space_id=os.environ.get("RESEARCH_GENIE_SPACE_ID"),
-        nav_tabs=["Research Q&A", "Paper Browser"],
+        nav_tabs=["Research Q&A", "Paper Browser", "Citation Explorer"],
     ),
 }
 

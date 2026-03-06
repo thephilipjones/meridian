@@ -1,9 +1,8 @@
 # Databricks notebook source
-"""Bronze layer: ingest raw Crossref DOI metadata and citation links.
+"""Bronze layer: ingest raw Crossref citation links from staging volume.
 
-Phase 2 stub — creates an empty streaming table with the correct schema.
-
-TODO Phase 2: Implement Auto Loader ingestion from Crossref staging volume
+Reads JSON-lines files from the crossref staging volume via Auto Loader,
+producing a streaming table of citation edges (citing_doi → cited_doi).
 """
 
 from pyspark import pipelines as dp
@@ -14,18 +13,25 @@ SCHEMA_STAGING = "meridian_staging"
 
 
 @dp.table(
-    name="raw_crossref_metadata",
-    comment="[Phase 2] Raw Crossref DOI metadata and citation references",
+    name="raw_crossref_citations",
+    comment="Raw Crossref citation links ingested via Auto Loader",
     table_properties={
         "quality": "bronze",
         "meridian.business_unit": "research",
         "meridian.source": "crossref",
     },
 )
-def raw_crossref_metadata():
-    return spark.createDataFrame(  # noqa: F821
-        [],
-        "doi STRING, title STRING, authors_raw STRING, publisher STRING, "
-        "type STRING, issued_date STRING, references_json STRING, "
-        "source STRING, _ingest_timestamp TIMESTAMP, _source_file STRING",
+def raw_crossref_citations():
+    return (
+        spark.readStream.format("cloudFiles")  # noqa: F821
+        .option("cloudFiles.format", "json")
+        .option("cloudFiles.schemaLocation", f"/Volumes/{CATALOG}/{SCHEMA_STAGING}/crossref/_schema")
+        .load(f"/Volumes/{CATALOG}/{SCHEMA_STAGING}/crossref/")
+        .select(
+            F.col("citing_doi"),
+            F.col("cited_doi"),
+            F.col("source"),
+            F.current_timestamp().alias("_ingest_timestamp"),
+            F.col("_metadata.file_path").alias("_source_file"),
+        )
     )

@@ -1,38 +1,137 @@
-/**
- * Citation Explorer — tabular view of citation relationships.
- * Phase 1: table-based display. Phase 3: visual citation graph.
- */
+import { useEffect, useState } from "react";
+
+interface Citation {
+  citing_doi: string;
+  cited_doi: string;
+  citing_title: string | null;
+  cited_title: string | null;
+  citing_year: number | null;
+  cited_year: number | null;
+}
 
 export default function CitationExplorer() {
+  const [query, setQuery] = useState("");
+  const [citations, setCitations] = useState<Citation[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/research/citations?limit=25")
+      .then((r) => r.json())
+      .then(setCitations)
+      .catch(() => {});
+  }, []);
+
+  const handleSearch = async () => {
+    if (!query.trim()) return;
+    setLoading(true);
+    setSearched(true);
+    try {
+      const resp = await fetch(
+        `/api/research/citations?title=${encodeURIComponent(query)}&limit=50`
+      );
+      setCitations(await resp.json());
+    } catch {
+      setCitations([]);
+    }
+    setLoading(false);
+  };
+
+  const doiLink = (doi: string) => (
+    <a
+      href={`https://doi.org/${doi}`}
+      target="_blank"
+      rel="noreferrer"
+      className="text-meridian-600 hover:underline"
+    >
+      {doi}
+    </a>
+  );
+
   return (
-    <div className="rounded-xl border bg-white p-8 shadow-sm">
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-          <svg
-            className="h-8 w-8 text-gray-400"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-            />
-          </svg>
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900">
+    <div className="space-y-6">
+      <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <h2 className="mb-2 text-lg font-semibold text-meridian-900">
           Citation Explorer
-        </h3>
-        <p className="mt-2 max-w-md text-center text-sm text-gray-500">
-          Citation relationships will be available once the Crossref data
-          pipeline is active (Phase 2). The citation graph visualization is
-          planned for Phase 3.
+        </h2>
+        <p className="mb-4 text-sm text-gray-500">
+          Explore citation relationships between research articles.
+          Search by title keyword to find which papers cite each other.
         </p>
-        <p className="mt-4 text-xs text-gray-400">
-          Tables: meridian.research.citations
-        </p>
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            placeholder="e.g., CRISPR, immunotherapy, breast cancer..."
+            className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-meridian-500 focus:outline-none focus:ring-1 focus:ring-meridian-500"
+          />
+          <button
+            onClick={handleSearch}
+            disabled={loading}
+            className="rounded-lg bg-meridian-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-meridian-700 disabled:opacity-50"
+          >
+            {loading ? "Searching..." : "Search"}
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-700">
+            {searched
+              ? `${citations.length} citation links found`
+              : `Recent citations (${citations.length})`}
+          </h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-gray-500">
+                <th className="pb-2 pr-4 font-medium">Citing Paper</th>
+                <th className="pb-2 pr-4 font-medium">Year</th>
+                <th className="pb-2 pr-4 font-medium">Cites</th>
+                <th className="pb-2 pr-4 font-medium">Year</th>
+                <th className="pb-2 font-medium">DOI Links</th>
+              </tr>
+            </thead>
+            <tbody>
+              {citations.map((c, i) => (
+                <tr key={i} className="border-b last:border-0">
+                  <td className="max-w-xs truncate py-2.5 pr-4 font-medium">
+                    {c.citing_title ?? c.citing_doi}
+                  </td>
+                  <td className="py-2.5 pr-4 text-gray-500">
+                    {c.citing_year ?? "—"}
+                  </td>
+                  <td className="max-w-xs truncate py-2.5 pr-4">
+                    {c.cited_title ?? c.cited_doi}
+                  </td>
+                  <td className="py-2.5 pr-4 text-gray-500">
+                    {c.cited_year ?? "—"}
+                  </td>
+                  <td className="py-2.5 text-xs">
+                    <div className="flex gap-2">
+                      {doiLink(c.citing_doi)}
+                      <span className="text-gray-300">→</span>
+                      {doiLink(c.cited_doi)}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {citations.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-gray-400">
+                    {searched
+                      ? "No citation links found for this query."
+                      : "Loading citations..."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

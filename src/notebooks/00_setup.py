@@ -17,7 +17,7 @@
 dbutils.widgets.text("catalog_name", "serverless_stable_k2zkdm_catalog")
 catalog_name = dbutils.widgets.get("catalog_name")
 
-schemas = ["meridian_regulatory", "meridian_research", "meridian_internal", "meridian_staging"]
+schemas = ["meridian_regulatory", "meridian_research", "meridian_internal", "meridian_staging", "meridian_system"]
 
 staging_sources = [
     "sec_filings", "fda_actions", "patents",
@@ -79,6 +79,7 @@ schema_tags = {
     "meridian_research": {"business_unit": "research", "description": "PubMed, arXiv, Crossref research articles"},
     "meridian_internal": {"business_unit": "internal", "description": "CRM, web analytics, financial summaries"},
     "meridian_staging": {"business_unit": "shared", "description": "Raw file staging volumes for pipeline ingestion"},
+    "meridian_system": {"business_unit": "platform", "description": "System tables meta-analytics — audit, access patterns, compute"},
 }
 
 for schema, tags in schema_tags.items():

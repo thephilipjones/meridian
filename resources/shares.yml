@@ -1,0 +1,38 @@
+# Delta Sharing Configuration for Meridian Insights
+#
+# NOTE: As of March 2026, DAB does not support `shares` as a native resource
+# type. This YAML is documentation only — shares must be created manually
+# or via the setup notebook (src/notebooks/02_delta_sharing.py).
+#
+# See docs/DEPLOYMENT.md for manual setup instructions.
+
+shares:
+  meridian_regulatory_share:
+    name: "meridian_regulatory_share"
+    description: "Regulatory data products — SEC filings, FDA actions, company entities"
+    tables:
+      - "${var.catalog_name}.meridian_regulatory.regulatory_actions"
+      - "${var.catalog_name}.meridian_regulatory.company_entities"
+    recipients:
+      - name: "acme_bank"
+        description: "Acme Bank — James Rivera's team. Subscription tier: sec_only"
+        # Recipient is created with an activation link; the consumer uses
+        # the link to set up their credential file for open Delta Sharing.
+
+# Manual setup commands (run after bundle deploy):
+#
+# Create share:
+#   spark.sql("CREATE SHARE IF NOT EXISTS meridian_regulatory_share")
+#   spark.sql("ALTER SHARE meridian_regulatory_share ADD TABLE {catalog}.meridian_regulatory.regulatory_actions")
+#   spark.sql("ALTER SHARE meridian_regulatory_share ADD TABLE {catalog}.meridian_regulatory.company_entities")
+#
+# Create recipient:
+#   spark.sql("CREATE RECIPIENT IF NOT EXISTS acme_bank")
+#   spark.sql("GRANT SELECT ON SHARE meridian_regulatory_share TO RECIPIENT acme_bank")
+#
+# Get activation link:
+#   spark.sql("DESCRIBE RECIPIENT acme_bank")
+#
+# Revoke access:
+#   spark.sql("REVOKE SELECT ON SHARE meridian_regulatory_share FROM RECIPIENT acme_bank")
+#   spark.sql("ALTER RECIPIENT acme_bank SET PROPERTIES ('status' = 'DEACTIVATED')")

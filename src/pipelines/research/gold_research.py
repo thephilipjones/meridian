@@ -100,7 +100,8 @@ def authors():
 
 @dp.table(
     name="citations",
-    comment="[Phase 2] Citation relationships enriched with article titles and years",
+    comment="Citation relationships enriched with article titles and publication years",
+    cluster_by=["citing_doi", "cited_doi"],
     table_properties={
         "quality": "gold",
         "meridian.business_unit": "research",
@@ -108,10 +109,21 @@ def authors():
     },
 )
 def citations():
-    return spark.createDataFrame(  # noqa: F821
-        [],
-        "citing_doi STRING, cited_doi STRING, citing_title STRING, "
-        "cited_title STRING, citing_year INT, cited_year INT",
+    cites = dp.read("cleaned_citations")
+    articles_df = dp.read("articles").select(
+        F.col("doi"), F.col("title"), F.col("publication_year"),
+    )
+
+    citing = articles_df.withColumnRenamed("title", "citing_title").withColumnRenamed("publication_year", "citing_year")
+    cited = articles_df.withColumnRenamed("title", "cited_title").withColumnRenamed("publication_year", "cited_year")
+
+    return (
+        cites
+        .join(citing, cites.citing_doi == citing.doi, "left")
+        .drop(citing.doi)
+        .join(cited, cites.cited_doi == cited.doi, "left")
+        .drop(cited.doi)
+        .select("citing_doi", "cited_doi", "citing_title", "cited_title", "citing_year", "cited_year")
     )
 
 

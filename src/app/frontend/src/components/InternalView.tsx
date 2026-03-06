@@ -156,6 +156,132 @@ function SalesDashboard() {
   );
 }
 
+interface QueryActivity {
+  event_date: string;
+  user_email: string;
+  action_name: string;
+  query_count: number;
+}
+
+interface TableAccess {
+  schema_name: string;
+  table_name: string;
+  unique_users: number;
+  access_count: number;
+  last_accessed: string;
+}
+
+interface ComputeConsumption {
+  usage_date: string;
+  sku_name: string;
+  usage_unit: string;
+  total_dbus: number;
+}
+
+function PlatformAnalytics() {
+  const [queryActivity, setQueryActivity] = useState<QueryActivity[]>([]);
+  const [tableAccess, setTableAccess] = useState<TableAccess[]>([]);
+  const [compute, setCompute] = useState<ComputeConsumption[]>([]);
+
+  useEffect(() => {
+    fetch("/api/analytics/query-activity?days=30").then((r) => r.json()).then(setQueryActivity).catch(() => {});
+    fetch("/api/analytics/table-access?limit=15").then((r) => r.json()).then(setTableAccess).catch(() => {});
+    fetch("/api/analytics/compute-consumption?days=30").then((r) => r.json()).then(setCompute).catch(() => {});
+  }, []);
+
+  const dailyQueries = queryActivity.reduce(
+    (acc, row) => {
+      const existing = acc.find((a) => a.date === row.event_date);
+      if (existing) {
+        existing.queries += row.query_count;
+      } else {
+        acc.push({ date: row.event_date, queries: row.query_count });
+      }
+      return acc;
+    },
+    [] as { date: string; queries: number }[]
+  ).sort((a, b) => a.date.localeCompare(b.date));
+
+  const totalQueries = queryActivity.reduce((s, r) => s + r.query_count, 0);
+  const uniqueUsers = new Set(queryActivity.map((r) => r.user_email)).size;
+  const totalDBUs = compute.reduce((s, r) => s + r.total_dbus, 0);
+
+  return (
+    <div className="space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: "Queries (30d)", value: totalQueries.toLocaleString() },
+          { label: "Unique Users", value: uniqueUsers.toLocaleString() },
+          { label: "Total DBUs (30d)", value: totalDBUs.toFixed(1) },
+        ].map((kpi) => (
+          <div key={kpi.label} className="rounded-xl border bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-500">{kpi.label}</p>
+            <p className="mt-1 text-2xl font-bold text-meridian-900">{kpi.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-6">
+        {/* Query Activity Over Time */}
+        <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">Query Activity (Daily)</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={dailyQueries}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+              <YAxis />
+              <Tooltip />
+              <Line type="monotone" dataKey="queries" stroke="#6366f1" strokeWidth={2} name="Queries" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Top Tables */}
+        <div className="rounded-xl border bg-white p-5 shadow-sm">
+          <h3 className="mb-4 text-sm font-semibold text-gray-700">Most Accessed Tables</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={tableAccess.slice(0, 10)} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" />
+              <YAxis dataKey="table_name" type="category" tick={{ fontSize: 10 }} width={120} />
+              <Tooltip />
+              <Bar dataKey="access_count" fill="#8b5cf6" name="Accesses" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Compute Consumption */}
+      <div className="rounded-xl border bg-white p-5 shadow-sm">
+        <h3 className="mb-4 text-sm font-semibold text-gray-700">Compute Consumption by SKU</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b text-left text-gray-500">
+                <th className="pb-2 font-medium">Date</th>
+                <th className="pb-2 font-medium">SKU</th>
+                <th className="pb-2 font-medium">Unit</th>
+                <th className="pb-2 font-medium">DBUs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {compute.slice(0, 20).map((c, i) => (
+                <tr key={i} className="border-b last:border-0">
+                  <td className="py-2">{c.usage_date}</td>
+                  <td className="py-2 font-medium">{c.sku_name}</td>
+                  <td className="py-2">{c.usage_unit}</td>
+                  <td className="py-2">{c.total_dbus.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProductUsageView() {
   const [usage, setUsage] = useState<
     { account_name: string; product: string; api_calls: number; error_rate: number }[]
@@ -200,6 +326,8 @@ export default function InternalView({ activeTab }: Props) {
       return <SalesDashboard />;
     case "Product Usage":
       return <ProductUsageView />;
+    case "Platform Analytics":
+      return <PlatformAnalytics />;
     case "Genie":
       return <GenieEmbed />;
     default:

@@ -1,4 +1,5 @@
 import PaperBrowser from "./PaperBrowser";
+import CitationExplorer from "./CitationExplorer";
 import { useState } from "react";
 import type { Article } from "../types";
 
@@ -6,9 +7,14 @@ interface Props {
   activeTab: string;
 }
 
+interface SearchResult extends Article {
+  similarity_score?: number;
+}
+
 function ResearchQA() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Article[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searchMode, setSearchMode] = useState<"semantic" | "keyword" | null>(null);
   const [searching, setSearching] = useState(false);
 
   const handleSearch = async () => {
@@ -16,12 +22,14 @@ function ResearchQA() {
     setSearching(true);
     try {
       const resp = await fetch(
-        `/api/research/search?q=${encodeURIComponent(query)}&limit=10`
+        `/api/research/semantic-search?q=${encodeURIComponent(query)}&limit=10`
       );
       const data = await resp.json();
-      setResults(data);
+      setResults(data.results ?? []);
+      setSearchMode(data.mode ?? "keyword");
     } catch {
       setResults([]);
+      setSearchMode(null);
     }
     setSearching(false);
   };
@@ -34,8 +42,8 @@ function ResearchQA() {
           Research Q&A
         </h2>
         <p className="mb-4 text-sm text-gray-500">
-          Ask a research question — results are sourced from peer-reviewed
-          articles with DOIs and study type classifications.
+          Ask a research question in natural language — results use semantic
+          search over article abstracts, powered by Vector Search.
         </p>
         <div className="flex gap-3">
           <input
@@ -59,9 +67,22 @@ function ResearchQA() {
       {/* Results */}
       {results.length > 0 && (
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-gray-500">
-            {results.length} results found
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-gray-500">
+              {results.length} results found
+            </h3>
+            {searchMode && (
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                  searchMode === "semantic"
+                    ? "bg-indigo-100 text-indigo-700"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                {searchMode === "semantic" ? "Semantic Search" : "Keyword Search"}
+              </span>
+            )}
+          </div>
           {results.map((article) => (
             <div
               key={article.article_id}
@@ -90,6 +111,11 @@ function ResearchQA() {
                   </div>
                 </div>
                 <div className="flex flex-shrink-0 flex-col items-end gap-1">
+                  {article.similarity_score != null && (
+                    <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-600">
+                      {(article.similarity_score * 100).toFixed(0)}% match
+                    </span>
+                  )}
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       article.is_preprint === "true"
@@ -132,6 +158,8 @@ export default function ResearchView({ activeTab }: Props) {
       return <ResearchQA />;
     case "Paper Browser":
       return <PaperBrowser />;
+    case "Citation Explorer":
+      return <CitationExplorer />;
     default:
       return <ResearchQA />;
   }
