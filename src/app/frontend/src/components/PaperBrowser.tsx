@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { ErrorBanner } from "../hooks/useFetch";
+import { SkeletonTable } from "./Skeleton";
 import type { Article } from "../types";
 
 export default function PaperBrowser() {
@@ -8,6 +10,7 @@ export default function PaperBrowser() {
   const [yearFilter, setYearFilter] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchArticles();
@@ -21,12 +24,15 @@ export default function PaperBrowser() {
     if (yearFilter) params.set("year", yearFilter);
     params.set("limit", "100");
 
+    setError(null);
     try {
       const resp = await fetch(`/api/research/articles?${params}`);
+      if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
       const data = await resp.json();
       setArticles(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (e: unknown) {
       setArticles([]);
+      setError(e instanceof Error ? e.message : "Failed to load articles");
     }
     setLoading(false);
   };
@@ -74,9 +80,13 @@ export default function PaperBrowser() {
       </div>
 
       {/* Results Table */}
+      {error && <ErrorBanner message={error} onRetry={fetchArticles} />}
+
       <div className="rounded-xl border bg-white shadow-sm">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading articles...</div>
+          <div className="p-5">
+            <SkeletonTable rows={8} cols={5} />
+          </div>
         ) : articles.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             No articles found. Try adjusting your filters.

@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -12,10 +11,38 @@ import {
   Legend,
 } from "recharts";
 import GenieEmbed from "./GenieEmbed";
+import { useFetch, ErrorBanner } from "../hooks/useFetch";
+import {
+  SalesDashboardSkeleton,
+  PlatformAnalyticsSkeleton,
+  ProductUsageSkeleton,
+} from "./Skeleton";
 import type { SalesPipeline, RevenueSummary, CustomerHealth } from "../types";
 
 interface Props {
   activeTab: string;
+}
+
+interface QueryActivity {
+  event_date: string;
+  user_email: string;
+  action_name: string;
+  query_count: number;
+}
+
+interface TableAccess {
+  schema_name: string;
+  table_name: string;
+  unique_users: number;
+  access_count: number;
+  last_accessed: string;
+}
+
+interface ComputeConsumption {
+  usage_date: string;
+  sku_name: string;
+  usage_unit: string;
+  total_dbus: number;
 }
 
 function formatCurrency(val: number): string {
@@ -25,17 +52,15 @@ function formatCurrency(val: number): string {
 }
 
 function SalesDashboard() {
-  const [pipeline, setPipeline] = useState<SalesPipeline[]>([]);
-  const [revenue, setRevenue] = useState<RevenueSummary[]>([]);
-  const [health, setHealth] = useState<CustomerHealth[]>([]);
+  const { data: pipeline, loading: loadingPipeline, error: errPipeline, refetch: retryPipeline } = useFetch<SalesPipeline[]>("/api/analytics/sales-pipeline");
+  const { data: revenue, loading: loadingRevenue } = useFetch<RevenueSummary[]>("/api/analytics/revenue");
+  const { data: health, loading: loadingHealth } = useFetch<CustomerHealth[]>("/api/analytics/customer-health?limit=10");
 
-  useEffect(() => {
-    fetch("/api/analytics/sales-pipeline").then((r) => r.json()).then(setPipeline).catch(() => {});
-    fetch("/api/analytics/revenue").then((r) => r.json()).then(setRevenue).catch(() => {});
-    fetch("/api/analytics/customer-health?limit=10").then((r) => r.json()).then(setHealth).catch(() => {});
-  }, []);
+  const loading = loadingPipeline || loadingRevenue || loadingHealth;
+  if (loading) return <SalesDashboardSkeleton />;
+  if (errPipeline) return <ErrorBanner message="Failed to load sales data" onRetry={retryPipeline} />;
 
-  const stageData = pipeline.reduce(
+  const stageData = (pipeline ?? []).reduce(
     (acc, row) => {
       const existing = acc.find((a) => a.stage === row.stage);
       if (existing) {
@@ -50,7 +75,7 @@ function SalesDashboard() {
     [] as SalesPipeline[]
   );
 
-  const revByQuarter = revenue.reduce(
+  const revByQuarter = (revenue ?? []).reduce(
     (acc, row) => {
       const key = `FY${row.fiscal_year} ${row.fiscal_quarter}`;
       const existing = acc.find((a) => a.period === key);
@@ -127,7 +152,7 @@ function SalesDashboard() {
               </tr>
             </thead>
             <tbody>
-              {health.map((h) => (
+              {(health ?? []).map((h) => (
                 <tr key={h.account_name} className="border-b last:border-0">
                   <td className="py-2 font-medium">{h.account_name}</td>
                   <td className="py-2">{formatCurrency(h.arr)}</td>
@@ -156,40 +181,16 @@ function SalesDashboard() {
   );
 }
 
-interface QueryActivity {
-  event_date: string;
-  user_email: string;
-  action_name: string;
-  query_count: number;
-}
-
-interface TableAccess {
-  schema_name: string;
-  table_name: string;
-  unique_users: number;
-  access_count: number;
-  last_accessed: string;
-}
-
-interface ComputeConsumption {
-  usage_date: string;
-  sku_name: string;
-  usage_unit: string;
-  total_dbus: number;
-}
-
 function PlatformAnalytics() {
-  const [queryActivity, setQueryActivity] = useState<QueryActivity[]>([]);
-  const [tableAccess, setTableAccess] = useState<TableAccess[]>([]);
-  const [compute, setCompute] = useState<ComputeConsumption[]>([]);
+  const { data: queryActivity, loading: loadingQA, error: errQA, refetch: retryQA } = useFetch<QueryActivity[]>("/api/analytics/query-activity?days=30");
+  const { data: tableAccess, loading: loadingTA } = useFetch<TableAccess[]>("/api/analytics/table-access?limit=15");
+  const { data: compute, loading: loadingCompute } = useFetch<ComputeConsumption[]>("/api/analytics/compute-consumption?days=30");
 
-  useEffect(() => {
-    fetch("/api/analytics/query-activity?days=30").then((r) => r.json()).then(setQueryActivity).catch(() => {});
-    fetch("/api/analytics/table-access?limit=15").then((r) => r.json()).then(setTableAccess).catch(() => {});
-    fetch("/api/analytics/compute-consumption?days=30").then((r) => r.json()).then(setCompute).catch(() => {});
-  }, []);
+  const loading = loadingQA || loadingTA || loadingCompute;
+  if (loading) return <PlatformAnalyticsSkeleton />;
+  if (errQA) return <ErrorBanner message="Failed to load platform analytics" onRetry={retryQA} />;
 
-  const dailyQueries = queryActivity.reduce(
+  const dailyQueries = (queryActivity ?? []).reduce(
     (acc, row) => {
       const existing = acc.find((a) => a.date === row.event_date);
       if (existing) {
@@ -202,9 +203,9 @@ function PlatformAnalytics() {
     [] as { date: string; queries: number }[]
   ).sort((a, b) => a.date.localeCompare(b.date));
 
-  const totalQueries = queryActivity.reduce((s, r) => s + r.query_count, 0);
-  const uniqueUsers = new Set(queryActivity.map((r) => r.user_email)).size;
-  const totalDBUs = compute.reduce((s, r) => s + r.total_dbus, 0);
+  const totalQueries = (queryActivity ?? []).reduce((s, r) => s + r.query_count, 0);
+  const uniqueUsers = new Set((queryActivity ?? []).map((r) => r.user_email)).size;
+  const totalDBUs = (compute ?? []).reduce((s, r) => s + r.total_dbus, 0);
 
   return (
     <div className="space-y-6">
@@ -241,7 +242,7 @@ function PlatformAnalytics() {
         <div className="rounded-xl border bg-white p-5 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold text-gray-700">Most Accessed Tables</h3>
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={tableAccess.slice(0, 10)} layout="vertical">
+            <BarChart data={(tableAccess ?? []).slice(0, 10)} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" />
               <YAxis dataKey="table_name" type="category" tick={{ fontSize: 10 }} width={120} />
@@ -266,7 +267,7 @@ function PlatformAnalytics() {
               </tr>
             </thead>
             <tbody>
-              {compute.slice(0, 20).map((c, i) => (
+              {(compute ?? []).slice(0, 20).map((c, i) => (
                 <tr key={i} className="border-b last:border-0">
                   <td className="py-2">{c.usage_date}</td>
                   <td className="py-2 font-medium">{c.sku_name}</td>
@@ -283,13 +284,12 @@ function PlatformAnalytics() {
 }
 
 function ProductUsageView() {
-  const [usage, setUsage] = useState<
+  const { data: usage, loading, error, refetch } = useFetch<
     { account_name: string; product: string; api_calls: number; error_rate: number }[]
-  >([]);
+  >("/api/analytics/product-usage?limit=50");
 
-  useEffect(() => {
-    fetch("/api/analytics/product-usage?limit=50").then((r) => r.json()).then(setUsage).catch(() => {});
-  }, []);
+  if (loading) return <ProductUsageSkeleton />;
+  if (error) return <ErrorBanner message="Failed to load product usage" onRetry={refetch} />;
 
   return (
     <div className="rounded-xl border bg-white p-5 shadow-sm">
@@ -305,7 +305,7 @@ function ProductUsageView() {
             </tr>
           </thead>
           <tbody>
-            {usage.map((u, i) => (
+            {(usage ?? []).map((u, i) => (
               <tr key={i} className="border-b last:border-0">
                 <td className="py-2 font-medium">{u.account_name}</td>
                 <td className="py-2">{u.product}</td>

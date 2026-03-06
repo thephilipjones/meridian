@@ -1,17 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useFetch, ErrorBanner } from "../hooks/useFetch";
+import { SkeletonCatalogCard } from "./Skeleton";
 import type { DataProduct, DataProductDetail } from "../types";
 
 export default function DataCatalog() {
-  const [products, setProducts] = useState<DataProduct[]>([]);
+  const { data: products, loading, error, refetch } = useFetch<DataProduct[]>("/api/catalog/products?subscription_tier=sec_only");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [detail, setDetail] = useState<DataProductDetail | null>(null);
-
-  useEffect(() => {
-    fetch("/api/catalog/products?subscription_tier=sec_only")
-      .then((r) => r.json())
-      .then(setProducts)
-      .catch(() => {});
-  }, []);
 
   const handleExpand = (tableName: string) => {
     if (expanded === tableName) {
@@ -50,8 +45,17 @@ export default function DataCatalog() {
         </span>
       </div>
 
+      {error && <ErrorBanner message="Failed to load data products" onRetry={refetch} />}
+
+      {loading ? (
+        <div className="grid gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCatalogCard key={i} />
+          ))}
+        </div>
+      ) : (
       <div className="grid gap-4">
-        {products.map((product) => (
+        {(products ?? []).map((product) => (
           <div
             key={product.table_name}
             className={`rounded-xl border shadow-sm transition-all ${
@@ -195,6 +199,7 @@ export default function DataCatalog() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

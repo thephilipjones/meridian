@@ -5,6 +5,7 @@ import ProfileSwitcher from "./components/ProfileSwitcher";
 import InternalView from "./components/InternalView";
 import ResearchView from "./components/ResearchView";
 import CustomerRegulatoryView from "./components/CustomerRegulatoryView";
+import { AppSkeleton } from "./components/Skeleton";
 
 export const toSlug = (name: string) =>
   name.toLowerCase().replace(/\s+/g, "-");
@@ -39,11 +40,7 @@ function App() {
   }, [activeProfile, location.pathname, navigate, tabs]);
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-lg text-gray-500">Loading Meridian Portal...</div>
-      </div>
-    );
+    return <AppSkeleton />;
   }
 
   const renderView = () => {

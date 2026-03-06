@@ -2,6 +2,21 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProfile } from "../contexts/ProfileContext";
 import { toSlug } from "../App";
+import { prefetchUrls } from "../hooks/useFetch";
+
+const PREFETCH_MAP: Record<string, string[]> = {
+  internal: [
+    "/api/analytics/sales-pipeline",
+    "/api/analytics/revenue",
+    "/api/analytics/customer-health?limit=10",
+  ],
+  regulatory: [
+    "/api/catalog/products?subscription_tier=sec_only",
+  ],
+  research: [
+    "/api/research/articles?limit=100",
+  ],
+};
 
 export default function ProfileSwitcher() {
   const { profiles, activeProfile, setActiveProfile } = useProfile();
@@ -55,6 +70,7 @@ export default function ProfileSwitcher() {
             <button
               key={profile.id}
               onClick={() => {
+                prefetchUrls(PREFETCH_MAP[profile.business_unit] ?? []);
                 setActiveProfile(profile);
                 navigate(`/${profile.business_unit}/${toSlug(profile.nav_tabs[0])}`);
                 setOpen(false);

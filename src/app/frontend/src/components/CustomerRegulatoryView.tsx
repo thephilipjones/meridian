@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import DataCatalog from "./DataCatalog";
 import GenieEmbed from "./GenieEmbed";
+import { useFetch, ErrorBanner } from "../hooks/useFetch";
+import { SkeletonConnectionInfo } from "./Skeleton";
 import type { ConnectionInfo, CodeSnippet } from "../types";
 
 interface Props {
@@ -8,23 +10,16 @@ interface Props {
 }
 
 function ConnectEnvironment() {
-  const [connInfo, setConnInfo] = useState<ConnectionInfo | null>(null);
-  const [snippets, setSnippets] = useState<Record<string, CodeSnippet>>({});
+  const { data: connInfo, loading: loadingConn, error: errConn, refetch: retryConn } = useFetch<ConnectionInfo>("/api/sharing/connection-info");
+  const { data: snippets, loading: loadingSnippets } = useFetch<Record<string, CodeSnippet>>("/api/sharing/code-snippets");
   const [activePlatform, setActivePlatform] = useState("databricks");
 
-  useEffect(() => {
-    fetch("/api/sharing/connection-info")
-      .then((r) => r.json())
-      .then(setConnInfo)
-      .catch(() => {});
-    fetch("/api/sharing/code-snippets")
-      .then((r) => r.json())
-      .then(setSnippets)
-      .catch(() => {});
-  }, []);
+  const loading = loadingConn || loadingSnippets;
+  if (loading) return <SkeletonConnectionInfo />;
+  if (errConn) return <ErrorBanner message="Failed to load connection info" onRetry={retryConn} />;
 
-  const platforms = Object.keys(snippets);
-  const activeSnippet = snippets[activePlatform];
+  const platforms = Object.keys(snippets ?? {});
+  const activeSnippet = (snippets ?? {})[activePlatform];
 
   return (
     <div className="space-y-6">
@@ -100,7 +95,7 @@ function ConnectEnvironment() {
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                {snippets[p]?.label ?? p}
+                {(snippets ?? {})[p]?.label ?? p}
               </button>
             ))}
           </nav>
