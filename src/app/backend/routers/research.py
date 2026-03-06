@@ -7,8 +7,11 @@ Foundation Model API — all scoped to the research business unit.
 
 import logging
 import os
+from functools import lru_cache
 
 from backend.db import execute_query
+from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.serving import ChatMessage, ChatMessageRole
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
@@ -18,6 +21,20 @@ log = logging.getLogger(__name__)
 _catalog = os.environ.get("MERIDIAN_CATALOG", "serverless_stable_k2zkdm_catalog")
 _vs_index = f"{_catalog}.meridian_research.articles_vs_index"
 _llm_endpoint = os.environ.get("MERIDIAN_LLM_ENDPOINT", "databricks-meta-llama-3-3-70b-instruct")
+
+_SCORE_COLUMN = "score"
+
+
+@lru_cache(maxsize=1)
+def _get_ws_client() -> WorkspaceClient:
+    host = os.environ.get("DATABRICKS_HOST")
+    client_id = os.environ.get("DATABRICKS_CLIENT_ID")
+    client_secret = os.environ.get("DATABRICKS_CLIENT_SECRET")
+    if not all([host, client_id, client_secret]):
+        missing = [k for k in ("DATABRICKS_HOST", "DATABRICKS_CLIENT_ID", "DATABRICKS_CLIENT_SECRET")
+                   if not os.environ.get(k)]
+        raise RuntimeError(f"Missing required env vars: {missing}")
+    return WorkspaceClient(host=f"https://{host}", client_id=client_id, client_secret=client_secret)
 
 
 @router.get("/articles")
@@ -112,13 +129,7 @@ def semantic_search(
     unavailable (e.g. not yet provisioned or endpoint is down).
     """
     try:
-        from databricks.sdk import WorkspaceClient
-
-        w = WorkspaceClient(
-            host=f"https://{os.environ['DATABRICKS_HOST']}",
-            client_id=os.environ["DATABRICKS_CLIENT_ID"],
-            client_secret=os.environ["DATABRICKS_CLIENT_SECRET"],
-        )
+        w = _get_ws_client()
         results = w.vector_search_indexes.query_index(
             index_name=_vs_index,
             columns=[
@@ -129,12 +140,7 @@ def semantic_search(
             query_text=q,
             num_results=limit,
         )
-        columns = results.result.column_names
-        articles = []
-        for row in results.result.data_array:
-            article = dict(zip(columns, row))
-            article["similarity_score"] = row[-1]
-            articles.append(article)
+        articles = _parse_vs_results(results)
         return {"mode": "semantic", "results": articles}
     except Exception as e:
         log.warning("Vector Search unavailable, falling back to keyword search: %s", e)
@@ -182,15 +188,21 @@ class AskRequest(BaseModel):
     history: list[dict[str, str]] | None = None
 
 
+def _parse_vs_results(results) -> list[dict]:
+    """Parse Vector Search query results using manifest column names."""
+    columns = [c.name for c in results.manifest.columns]
+    articles = []
+    for row in results.result.data_array:
+        article = dict(zip(columns, row))
+        if _SCORE_COLUMN in article:
+            article["similarity_score"] = article.pop(_SCORE_COLUMN)
+        articles.append(article)
+    return articles
+
+
 def _retrieve_articles(question: str, limit: int = 8) -> list[dict]:
     """Retrieve relevant articles from Vector Search for RAG context."""
-    from databricks.sdk import WorkspaceClient
-
-    w = WorkspaceClient(
-        host=f"https://{os.environ['DATABRICKS_HOST']}",
-        client_id=os.environ["DATABRICKS_CLIENT_ID"],
-        client_secret=os.environ["DATABRICKS_CLIENT_SECRET"],
-    )
+    w = _get_ws_client()
     results = w.vector_search_indexes.query_index(
         index_name=_vs_index,
         columns=[
@@ -201,13 +213,7 @@ def _retrieve_articles(question: str, limit: int = 8) -> list[dict]:
         query_text=question,
         num_results=limit,
     )
-    columns = results.result.column_names
-    articles = []
-    for row in results.result.data_array:
-        article = dict(zip(columns, row))
-        article["similarity_score"] = row[-1]
-        articles.append(article)
-    return articles
+    return _parse_vs_results(results)
 
 
 _SYSTEM_PROMPT = """You are the Meridian Research Assistant, an AI that answers biomedical and scientific research questions using a curated database of peer-reviewed articles and preprints.
@@ -262,27 +268,25 @@ def ask_research_question(request: AskRequest):
         }
 
     context = _build_context(articles)
-    messages = [{"role": "system", "content": _SYSTEM_PROMPT}]
+    _role_map = {"system": ChatMessageRole.SYSTEM, "user": ChatMessageRole.USER, "assistant": ChatMessageRole.ASSISTANT}
+    messages = [ChatMessage(role=ChatMessageRole.SYSTEM, content=_SYSTEM_PROMPT)]
 
     if request.history:
         for msg in request.history[-6:]:
-            messages.append({"role": msg.get("role", "user"), "content": msg.get("content", "")})
+            messages.append(ChatMessage(
+                role=_role_map.get(msg.get("role", "user"), ChatMessageRole.USER),
+                content=msg.get("content", ""),
+            ))
 
-    messages.append({
-        "role": "user",
-        "content": f"Based on the following research articles, answer this question:\n\n"
-                   f"**Question:** {request.question}\n\n"
-                   f"**Articles:**\n{context}",
-    })
+    messages.append(ChatMessage(
+        role=ChatMessageRole.USER,
+        content=f"Based on the following research articles, answer this question:\n\n"
+                f"**Question:** {request.question}\n\n"
+                f"**Articles:**\n{context}",
+    ))
 
     try:
-        from databricks.sdk import WorkspaceClient
-
-        w = WorkspaceClient(
-            host=f"https://{os.environ['DATABRICKS_HOST']}",
-            client_id=os.environ["DATABRICKS_CLIENT_ID"],
-            client_secret=os.environ["DATABRICKS_CLIENT_SECRET"],
-        )
+        w = _get_ws_client()
         response = w.serving_endpoints.query(
             name=_llm_endpoint,
             messages=messages,
