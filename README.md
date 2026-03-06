@@ -24,14 +24,14 @@ Packaged as a **Databricks Asset Bundle (DAB)** — deploy to any Unity Catalog-
 
 ```bash
 # 1. Authenticate with the Databricks workspace
-databricks auth login --profile k2zkdm
+databricks auth login --profile <your-profile>
 
 # 2. Install Python dependencies
 uv venv --python 3.11 && source .venv/bin/activate
 uv pip install -e ".[dev]"
 
 # 3. Deploy the bundle
-databricks bundle deploy -t dev
+databricks bundle deploy -t dev --profile <your-profile>
 
 # 4. Run initial setup (creates catalog, schemas, volumes)
 databricks bundle run setup_job -t dev
@@ -79,7 +79,7 @@ src/
     frontend/      #   React components: InternalView, ResearchView, CitationExplorer, etc.
 resources/         # DAB resource definitions (pipelines, jobs, dashboards, genie, shares)
 tests/             # Unit tests for data gen and pipeline expectations (41 tests)
-docs/              # PRD, demo script, deployment guide, session continuation prompt
+docs/              # PRD, demo script, deployment guide
 ```
 
 ## Schemas
@@ -106,4 +106,3 @@ Tests cover all 7 data generators (CRM, web events, financials, SEC filings, FDA
 - [docs/PRD.md](docs/PRD.md) — Full product requirements
 - [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) — 20-minute presenter's guide
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Step-by-step deployment instructions
-- [docs/NEXT_SESSION.md](docs/NEXT_SESSION.md) — Continuation prompt for future sessions

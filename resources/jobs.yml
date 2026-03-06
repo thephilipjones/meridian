@@ -133,7 +133,7 @@ resources:
             - task_key: run_regulatory
         - task_key: sync_vector_search
           notebook_task:
-            notebook_path: ../src/notebooks/08_vs_sync.py
+            notebook_path: ../src/notebooks/09_vs_sync.py
             base_parameters:
               catalog_name: ${var.catalog_name}
           depends_on:

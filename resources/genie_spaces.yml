@@ -4,8 +4,8 @@
 # This YAML is documentation only — spaces are managed via REST API.
 #
 # To create/update spaces:
-#   1. Run src/notebooks/09_create_genie_spaces.py (creates spaces, grants perms, binds resources)
-#   2. Run src/notebooks/07_genie_enrichment.py (applies SQL snippets — space IDs are widget params)
+#   1. Run src/notebooks/07_create_genie_spaces.py (creates spaces, grants perms, binds resources)
+#   2. Run src/notebooks/08_genie_enrichment.py (applies SQL snippets — space IDs are widget params)
 #
 # Each space includes: tables, custom_instructions, and sample_questions.
 # These are applied via POST/PATCH /api/2.0/genie/spaces/{space_id}.
