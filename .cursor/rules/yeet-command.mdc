@@ -1,0 +1,15 @@
+---
+description: "yeet" command — full SDLC ship workflow (review, validate, deploy, commit)
+alwaysApply: true
+---
+
+# "Yeet" Command
+
+When the user says **"yeet"**, execute the full SDLC ship workflow:
+
+1. **Code review** — Review all uncommitted changes against Databricks architect best practices. Flag issues before proceeding.
+2. **Validate** — Run linting, type checks (`tsc --noEmit`), and the project test suite (`pytest tests/ -v`). Fix any failures introduced by the current session.
+3. **Deploy** — Build the frontend (`cd src/app/frontend && npm run build`), then deploy using `scripts/deploy.sh` or the three-step manual process (bundle deploy, workspace import-dir for `frontend/dist/`, apps deploy). Follow `CLAUDE.md` rules for deploy.
+4. **Commit** — Create one or more meaningful git commits capturing only the work done in the current chat session. Follow the repo's existing commit message style (conventional commits: `feat:`, `fix:`, `chore:`, etc.). Group logically — e.g., separate frontend skeleton work from backend caching if it makes a cleaner history.
+
+Stop and ask the user before proceeding if the code review surfaces blocking issues.
