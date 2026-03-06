@@ -1,8 +1,11 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useProfile } from "../contexts/ProfileContext";
+import { toSlug } from "../App";
 
 export default function ProfileSwitcher() {
   const { profiles, activeProfile, setActiveProfile } = useProfile();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -53,6 +56,7 @@ export default function ProfileSwitcher() {
               key={profile.id}
               onClick={() => {
                 setActiveProfile(profile);
+                navigate(`/${profile.business_unit}/${toSlug(profile.nav_tabs[0])}`);
                 setOpen(false);
               }}
               className={`flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-gray-50 ${

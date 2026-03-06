@@ -21,17 +21,21 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    function pickInitialProfile(list: Profile[]): Profile {
+      const seg = window.location.pathname.split("/").filter(Boolean)[0];
+      return list.find((p) => p.business_unit === seg) ?? list[0];
+    }
+
     fetch("/api/profiles")
       .then((r) => r.json())
       .then((data: Profile[]) => {
         setProfiles(data);
         if (data.length > 0) {
-          setActiveProfile(data[0]);
+          setActiveProfile(pickInitialProfile(data));
         }
         setLoading(false);
       })
       .catch(() => {
-        // Fallback profiles for local dev without backend
         const fallback: Profile[] = [
           {
             id: "sarah",
@@ -68,7 +72,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
           },
         ];
         setProfiles(fallback);
-        setActiveProfile(fallback[0]);
+        setActiveProfile(pickInitialProfile(fallback));
         setLoading(false);
       });
   }, []);

@@ -4,11 +4,11 @@ Serves the React frontend as static files and provides API endpoints
 for analytics, research, and profile management.
 """
 
-import os
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.profiles import get_all_profiles
@@ -60,4 +60,12 @@ def _find_frontend_dist() -> Path | None:
 
 _dist = _find_frontend_dist()
 if _dist:
-    app.mount("/", StaticFiles(directory=str(_dist), html=True), name="frontend")
+    app.mount("/assets", StaticFiles(directory=str(_dist / "assets")), name="static-assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        """Serve static files from dist, or fall back to index.html for SPA routing."""
+        file_path = _dist / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(_dist / "index.html"))
