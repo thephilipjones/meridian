@@ -130,11 +130,13 @@ def _gen_abstract() -> str:
 
 def generate_patents(n: int) -> list[dict]:
     patents = []
-    base_date = datetime(2023, 1, 1)
+    yesterday = datetime.today() - timedelta(days=1)
+    base_date = yesterday - timedelta(days=3 * 365)
+    span_days = (yesterday - base_date).days
 
     for i in range(n):
         assignee = random.choice(COMPANIES)
-        filing_date = base_date + timedelta(days=random.randint(0, 1050))
+        filing_date = base_date + timedelta(days=random.randint(0, span_days))
         grant_lag = timedelta(days=random.randint(180, 900))
         grant_date = filing_date + grant_lag
         uspc = random.choice(list(USPC_CLASSES.keys()))

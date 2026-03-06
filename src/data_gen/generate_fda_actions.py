@@ -95,12 +95,14 @@ STATES = [
 
 def generate_actions(n: int) -> list[dict]:
     actions = []
-    base_date = datetime(2023, 1, 1)
+    yesterday = datetime.today() - timedelta(days=1)
+    base_date = yesterday - timedelta(days=3 * 365)
+    span_days = (yesterday - base_date).days
 
     for _ in range(n):
         company = random.choice(COMPANIES)
         city_idx = random.randint(0, len(CITIES) - 1)
-        recall_date = base_date + timedelta(days=random.randint(0, 1050))
+        recall_date = base_date + timedelta(days=random.randint(0, span_days))
 
         actions.append({
             "action_id": f"fda-{uuid.uuid4().hex[:12]}",

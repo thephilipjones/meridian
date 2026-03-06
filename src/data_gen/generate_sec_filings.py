@@ -100,12 +100,14 @@ def _company_ciks(companies: list[str]) -> dict[str, str]:
 def generate_filings(n: int) -> list[dict]:
     cik_map = _company_ciks(COMPANIES)
     filings = []
-    base_date = datetime(2023, 1, 1)
+    yesterday = datetime.today() - timedelta(days=1)
+    base_date = yesterday - timedelta(days=3 * 365)
+    span_days = (yesterday - base_date).days
 
     for _ in range(n):
         company = random.choice(COMPANIES)
         filing_type = random.choices(FILING_TYPES, weights=FILING_TYPE_WEIGHTS, k=1)[0]
-        filing_date = base_date + timedelta(days=random.randint(0, 1050))
+        filing_date = base_date + timedelta(days=random.randint(0, span_days))
         sic_code = random.choice(list(SIC_CODES.keys()))
 
         if filing_type == "8-K":
