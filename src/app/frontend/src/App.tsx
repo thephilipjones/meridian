@@ -68,14 +68,14 @@ function App() {
       <header className="bg-meridian-900 text-white shadow-lg">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-meridian-500 font-bold text-white">
+            <div className="flex aspect-square h-9 w-9 flex-shrink-0 items-center justify-center rounded-[22%] bg-accent-500 font-display text-xl font-bold leading-none text-meridian-900">
               M
             </div>
             <div>
-              <h1 className="text-lg font-semibold leading-tight">
-                Meridian Portal
+              <h1 className="font-display text-lg font-semibold leading-tight tracking-wide">
+                Meridian
               </h1>
-              <p className="text-xs text-meridian-300">
+              <p className="text-[11px] tracking-widest text-meridian-400 uppercase">
                 Regulatory Intelligence & Research Analytics
               </p>
             </div>
@@ -89,13 +89,16 @@ function App() {
               <button
                 key={tab}
                 onClick={() => handleTabClick(tab)}
-                className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors ${
+                className={`relative px-4 py-2 text-sm font-medium transition-colors ${
                   tab === activeTab
-                    ? "bg-gray-50 text-meridian-900"
-                    : "text-meridian-200 hover:bg-meridian-800 hover:text-white"
+                    ? "text-white"
+                    : "text-meridian-400 hover:text-meridian-200"
                 }`}
               >
                 {tab}
+                {tab === activeTab && (
+                  <span className="absolute inset-x-1 bottom-0 h-0.5 rounded-full bg-accent-400" />
+                )}
               </button>
             ))}
           </nav>

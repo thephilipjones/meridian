@@ -116,7 +116,7 @@ function SalesDashboard() {
               <XAxis dataKey="stage" tick={{ fontSize: 11 }} />
               <YAxis tickFormatter={(v) => formatCurrency(v)} />
               <Tooltip formatter={(v: number) => formatCurrency(v)} />
-              <Bar dataKey="total_amount" fill="#3b82f6" name="Amount" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="total_amount" fill="#486581" name="Amount" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -131,7 +131,7 @@ function SalesDashboard() {
               <YAxis tickFormatter={(v) => formatCurrency(v)} />
               <Tooltip formatter={(v: number) => formatCurrency(v)} />
               <Legend />
-              <Line type="monotone" dataKey="revenue" stroke="#1d4ed8" strokeWidth={2} name="Revenue" />
+              <Line type="monotone" dataKey="revenue" stroke="#334e68" strokeWidth={2} name="Revenue" />
             </LineChart>
           </ResponsiveContainer>
         </div>

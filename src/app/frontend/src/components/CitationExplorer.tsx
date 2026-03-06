@@ -55,7 +55,7 @@ export default function CitationExplorer() {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border bg-white p-6 shadow-sm">
-        <h2 className="mb-2 text-lg font-semibold text-meridian-900">
+        <h2 className="font-display mb-2 text-lg font-semibold text-meridian-900">
           Citation Explorer
         </h2>
         <p className="mb-4 text-sm text-gray-500">

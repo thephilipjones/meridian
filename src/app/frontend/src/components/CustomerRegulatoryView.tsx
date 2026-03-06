@@ -25,7 +25,7 @@ function ConnectEnvironment() {
     <div className="space-y-6">
       {connInfo && (
         <div className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="font-display text-lg font-semibold text-gray-900">
             Delta Sharing Connection
           </h2>
           <p className="mt-1 text-sm text-gray-500">{connInfo.instructions}</p>

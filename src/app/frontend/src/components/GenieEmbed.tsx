@@ -160,7 +160,7 @@ export default function GenieEmbed() {
             <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-meridian-100">
               <span className="text-2xl">✨</span>
             </div>
-            <h3 className="mb-1 text-base font-semibold text-gray-800">
+            <h3 className="font-display mb-1 text-base font-semibold text-gray-800">
               Ask a question about your data
             </h3>
             <p className="mb-6 max-w-sm text-center text-sm text-gray-500">
