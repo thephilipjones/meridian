@@ -24,6 +24,7 @@ _vs_index = f"{_catalog}.meridian_research.articles_vs_index"
 _llm_endpoint = os.environ.get("MERIDIAN_LLM_ENDPOINT", "databricks-meta-llama-3-3-70b-instruct")
 
 _SCORE_COLUMN = "score"
+_MIN_SIMILARITY = 0.45
 
 
 @lru_cache(maxsize=1)
@@ -143,10 +144,11 @@ def semantic_search(
                 "is_preprint", "publication_type", "citation_count",
             ],
             query_text=q,
-            num_results=limit,
+            num_results=limit * 2,
         )
         articles = _parse_vs_results(results)
-        return {"mode": "semantic", "results": articles}
+        filtered = [a for a in articles if (a.get("similarity_score") or 0) >= _MIN_SIMILARITY]
+        return {"mode": "semantic", "results": filtered[:limit]}
     except Exception as e:
         log.warning("Vector Search unavailable, falling back to keyword search: %s", e)
         keyword_results = search_articles(q=q, limit=limit)
@@ -208,7 +210,12 @@ def _parse_vs_results(results) -> list[dict]:
 
 
 def _retrieve_articles(question: str, limit: int = 8) -> list[dict]:
-    """Retrieve relevant articles from Vector Search for RAG context."""
+    """Retrieve relevant articles from Vector Search for RAG context.
+
+    Over-fetches 2x then filters by similarity score to discard results
+    that are semantically distant from the query — avoids confusing the
+    LLM with unrelated articles when the topic isn't in the corpus.
+    """
     w = _get_ws_client()
     results = w.vector_search_indexes.query_index(
         index_name=_vs_index,
@@ -218,15 +225,18 @@ def _retrieve_articles(question: str, limit: int = 8) -> list[dict]:
             "is_preprint", "publication_type", "citation_count",
         ],
         query_text=question,
-        num_results=limit,
+        num_results=limit * 2,
     )
-    return _parse_vs_results(results)
+    articles = _parse_vs_results(results)
+    filtered = [a for a in articles if (a.get("similarity_score") or 0) >= _MIN_SIMILARITY]
+    return filtered[:limit]
 
 
 _SYSTEM_PROMPT = """You are the Meridian Research Assistant, an AI that answers biomedical and scientific research questions using a curated database of peer-reviewed articles and preprints.
 
 RULES:
 - Base your answer ONLY on the provided articles. Do not fabricate information.
+- RELEVANCE CHECK: First assess whether the retrieved articles actually address the user's question. Each article has a Relevance score (0-1). If articles have low relevance scores (<0.55) or their topics clearly don't match the question, state clearly: "The research database does not contain articles directly addressing this topic." Then briefly describe what related topics were found, if any.
 - Cite articles using [1], [2], etc. matching the numbered source list.
 - For each claim, cite the specific article(s) that support it.
 - Distinguish between peer-reviewed publications and preprints (flag preprints explicitly).
@@ -244,11 +254,13 @@ def _build_context(articles: list[dict]) -> str:
     for i, a in enumerate(articles, 1):
         preprint_flag = " [PREPRINT]" if str(a.get("is_preprint", "")).lower() == "true" else ""
         pub_type = f" | {a['publication_type']}" if a.get("publication_type") else ""
+        score = a.get("similarity_score", 0)
+        score_str = f" | Relevance: {score:.2f}" if score else ""
         abstract = (a.get("abstract") or "No abstract available.")[:1500]
         parts.append(
             f"[{i}] {a.get('title', 'Untitled')}{preprint_flag}\n"
             f"    Journal: {a.get('journal', 'Unknown')} ({a.get('publication_year', '?')}){pub_type}\n"
-            f"    DOI: {a.get('doi', 'N/A')} | Citations: {a.get('citation_count', 0)}\n"
+            f"    DOI: {a.get('doi', 'N/A')} | Citations: {a.get('citation_count', 0)}{score_str}\n"
             f"    Abstract: {abstract}"
         )
     return "\n\n".join(parts)

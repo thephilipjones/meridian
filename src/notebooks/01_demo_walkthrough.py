@@ -173,13 +173,14 @@ display(spark.sql(f"""
 # MAGIC %md
 # MAGIC ### Switch to Dr. Anika Park (Research)
 # MAGIC
-# MAGIC > *"What are the latest findings on CRISPR off-target effects?"*
+# MAGIC > *"Dr. Park is researching checkpoint inhibitors in cancer — a topic with
+# MAGIC > hundreds of articles in the corpus. Let's see how she finds what she needs."*
 
 # COMMAND ----------
 
 display(spark.sql(f"""
     FROM {catalog}.meridian_research.article_search
-    |> WHERE lower(search_text) LIKE '%crispr%off-target%'
+    |> WHERE lower(search_text) LIKE '%checkpoint inhibitor%'
     |> ORDER BY citation_count DESC
     |> LIMIT 10
     |> SELECT title, journal, publication_year, publication_type, citation_count,

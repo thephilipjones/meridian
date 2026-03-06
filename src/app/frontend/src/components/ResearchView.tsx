@@ -118,9 +118,9 @@ function ResearchQA() {
             <p className="mb-4 text-sm text-gray-500">Try asking a research question:</p>
             <div className="flex flex-wrap justify-center gap-2">
               {[
-                "What are the latest findings on CRISPR off-target effects?",
-                "Summarize recent meta-analyses on gut microbiome and depression",
-                "What is known about mRNA vaccine stability?",
+                "What is the role of checkpoint inhibitors in treating non-small cell lung cancer?",
+                "How is circulating tumor DNA used as a prognostic biomarker in cancer?",
+                "What are the latest findings on CRISPR screening for drug resistance?",
               ].map((suggestion) => (
                 <button
                   key={suggestion}

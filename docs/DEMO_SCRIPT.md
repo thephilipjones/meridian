@@ -112,22 +112,25 @@
 
 #### As Dr. Anika Park (Research) — 3 min
 
-1. Click **Dr. Anika Park** in the profile switcher
-2. Show the **Research Q&A** or **Paper Browser** tab
+> Thread: follow Dr. Park through three ways of exploring the same research area (checkpoint inhibitors in cancer) — keyword search, semantic Q&A, and natural-language analytics.
 
-3. **Run notebook cell: "CRISPR off-target articles"** — pipe syntax search
-   - *"What are the latest findings on CRISPR off-target effects? We search across 5,000 articles, with results ranked by citation count and preprints clearly flagged."*
+1. Click **Dr. Anika Park** in the profile switcher
+2. Show the **Research Q&A** tab — click: *"What is the role of checkpoint inhibitors in treating non-small cell lung cancer?"*
+   - While waiting, explain: *"This is Vector Search plus Foundation Model API. The question is embedded, matched against 5,000 article abstracts, and the top results are synthesized into a cited answer."*
+   - Point out the cited sources, preprint flags, and relevance scores in the generated answer
+   - *"The system only uses articles that are semantically relevant — if a topic isn't in the corpus, it says so instead of hallucinating."*
+
+3. **Run notebook cell: "Checkpoint inhibitor articles"** — pipe syntax search
+   - *"Here's what the SQL behind a simpler search looks like — pipe syntax keeps it readable. Same data, same topic, but now you see the individual articles ranked by citation count."*
+   - Point out `|> ORDER BY citation_count DESC` and the preprint/peer-reviewed status column
 
 4. **Open the Research Assistant Genie space**
    - Ask: *"What are the most cited meta-analyses on immunotherapy for lung cancer?"*
-   - Wait for the response, then point out:
-     - Source citations (DOIs)
-     - Study type classification
-     - Preprint flagging
-   - *"This is what it looks like when you put Genie in front of a research corpus with expert instructions. It cites sources, distinguishes preprints from peer-reviewed work, and prioritizes meta-analyses when you ask broad questions."*
+   - Wait for the response, then point out structured results: DOIs, citation counts, study type filtering
+   - *"Genie generates SQL against the governed research tables. Its custom instructions understand publication types, citation metrics, and the difference between preprints and peer-reviewed work."*
 
    - Follow up: *"Who are the top 5 authors by h-index in this area?"*
-   - *"Genie crosses tables seamlessly — articles, authors, citation counts — to answer composite questions."*
+   - *"Genie crosses tables seamlessly — articles, authors, citations — to answer composite questions."*
 
 #### Key Talking Points
 - Databricks Apps: full-stack (FastAPI + React) deployed and managed by the platform
