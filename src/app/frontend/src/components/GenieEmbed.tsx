@@ -84,6 +84,20 @@ export default function GenieEmbed() {
           conversation_id: conversationId,
         }),
       });
+
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => null);
+        const errMsg =
+          errBody?.detail || `Server error (${resp.status})`;
+        setEntries((prev) => {
+          const updated = prev.slice(0, -1);
+          updated.push({ role: "genie", text: errMsg });
+          return updated;
+        });
+        setLoading(false);
+        return;
+      }
+
       const data: GenieResult = await resp.json();
 
       if (data.conversation_id) {
@@ -202,8 +216,8 @@ export default function GenieEmbed() {
                             </details>
                           )}
                           {entry.result &&
-                            entry.result.result_columns.length > 0 &&
-                            entry.result.result_rows.length > 0 && (
+                            (entry.result.result_columns?.length ?? 0) > 0 &&
+                            (entry.result.result_rows?.length ?? 0) > 0 && (
                               <div className="overflow-x-auto rounded-lg border">
                                 <table className="w-full text-xs">
                                   <thead>
@@ -235,10 +249,10 @@ export default function GenieEmbed() {
                                       ))}
                                   </tbody>
                                 </table>
-                                {entry.result.result_rows.length > 20 && (
+                                {(entry.result.result_rows?.length ?? 0) > 20 && (
                                   <div className="border-t bg-gray-50 px-3 py-1 text-[10px] text-gray-400">
                                     Showing 20 of{" "}
-                                    {entry.result.result_rows.length} rows
+                                    {entry.result.result_rows!.length} rows
                                   </div>
                                 )}
                               </div>
