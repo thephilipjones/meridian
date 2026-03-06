@@ -9,6 +9,7 @@ import logging
 import os
 from functools import lru_cache
 
+from backend.cache import ttl_cache
 from backend.db import execute_query
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.serving import ChatMessage, ChatMessageRole
@@ -38,6 +39,7 @@ def _get_ws_client() -> WorkspaceClient:
 
 
 @router.get("/articles")
+@ttl_cache(seconds=60)
 def get_articles(
     search: str | None = Query(None, description="Full-text search across titles and abstracts"),
     publication_type: str | None = Query(None),
@@ -73,6 +75,7 @@ def get_articles(
 
 
 @router.get("/articles/{article_id}")
+@ttl_cache(seconds=60)
 def get_article_detail(article_id: str):
     """Get full article details including abstract."""
     query = f"SELECT * FROM {_catalog}.meridian_research.articles WHERE article_id = %(article_id)s"
@@ -81,6 +84,7 @@ def get_article_detail(article_id: str):
 
 
 @router.get("/authors")
+@ttl_cache(seconds=60)
 def get_authors(
     search: str | None = Query(None),
     min_h_index: int | None = Query(None),
@@ -103,6 +107,7 @@ def get_authors(
 
 
 @router.get("/search")
+@ttl_cache(seconds=60)
 def search_articles(
     q: str = Query(..., description="Natural language search query"),
     limit: int = Query(20, le=100),
@@ -149,6 +154,7 @@ def semantic_search(
 
 
 @router.get("/citations")
+@ttl_cache(seconds=60)
 def get_citations(
     doi: str | None = Query(None, description="Search citing or cited DOI"),
     title: str | None = Query(None, description="Search in citing or cited title"),
@@ -177,6 +183,7 @@ def get_citations(
 
 
 @router.get("/mesh-terms")
+@ttl_cache(seconds=60)
 def get_mesh_terms(limit: int = Query(50, le=500)):
     """Top MeSH terms by article count."""
     query = f"SELECT * FROM {_catalog}.meridian_research.mesh_terms ORDER BY article_count DESC LIMIT {int(limit)}"

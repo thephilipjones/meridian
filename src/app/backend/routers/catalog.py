@@ -6,8 +6,9 @@ subscription-aware access controls, schema details, and sample data.
 
 import os
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
+from backend.cache import ttl_cache
 from backend.db import execute_query
 
 router = APIRouter()
@@ -22,6 +23,7 @@ SUBSCRIPTION_TIERS = {
 
 
 @router.get("/products")
+@ttl_cache(seconds=120)
 def list_data_products(subscription_tier: str = Query("sec_only")):
     """List available data products with subscription status."""
     subscribed_tables = SUBSCRIPTION_TIERS.get(subscription_tier, set())
@@ -53,18 +55,26 @@ def list_data_products(subscription_tier: str = Query("sec_only")):
     return products
 
 
+_VALID_TABLES = {"regulatory_actions", "patent_landscape", "company_entities", "company_risk_signals"}
+
+
 @router.get("/products/{table_name}")
+@ttl_cache(seconds=120)
 def get_product_detail(table_name: str, subscription_tier: str = Query("sec_only")):
     """Get product schema, sample records, and freshness info."""
+    if table_name not in _VALID_TABLES:
+        raise HTTPException(status_code=404, detail="Table not found")
+
     subscribed = table_name in SUBSCRIPTION_TIERS.get(subscription_tier, set())
 
-    schema = execute_query(f"""
-        SELECT column_name, data_type, comment
-        FROM {_catalog}.information_schema.columns
-        WHERE table_schema = 'meridian_regulatory'
-            AND table_name = '{table_name}'
-        ORDER BY ordinal_position
-    """)
+    schema = execute_query(
+        f"SELECT column_name, data_type, comment "
+        f"FROM {_catalog}.information_schema.columns "
+        f"WHERE table_schema = 'meridian_regulatory' "
+        f"AND table_name = %(table_name)s "
+        f"ORDER BY ordinal_position",
+        {"table_name": table_name},
+    )
 
     sample_rows = []
     if subscribed:

@@ -8,6 +8,7 @@ import os
 
 from fastapi import APIRouter, Query
 
+from backend.cache import ttl_cache
 from backend.db import execute_query
 
 router = APIRouter()
@@ -16,6 +17,7 @@ _catalog = os.environ.get("MERIDIAN_CATALOG", "serverless_stable_k2zkdm_catalog"
 
 
 @router.get("/sales-pipeline")
+@ttl_cache(seconds=60)
 def get_sales_pipeline(
     product_line: str | None = Query(None),
     region: str | None = Query(None),
@@ -37,6 +39,7 @@ def get_sales_pipeline(
 
 
 @router.get("/product-usage")
+@ttl_cache(seconds=60)
 def get_product_usage(
     account_name: str | None = Query(None),
     product: str | None = Query(None),
@@ -59,6 +62,7 @@ def get_product_usage(
 
 
 @router.get("/revenue")
+@ttl_cache(seconds=60)
 def get_revenue_summary(
     fiscal_year: int | None = Query(None),
     product_line: str | None = Query(None),
@@ -80,6 +84,7 @@ def get_revenue_summary(
 
 
 @router.get("/customer-health")
+@ttl_cache(seconds=60)
 def get_customer_health(
     health_tier: str | None = Query(None),
     limit: int = Query(50, le=500),
@@ -98,6 +103,7 @@ def get_customer_health(
 
 
 @router.get("/query-activity")
+@ttl_cache(seconds=60)
 def get_query_activity(days: int = Query(30, le=90)):
     """Daily query activity against the Meridian catalog from system tables."""
     query = (
@@ -110,6 +116,7 @@ def get_query_activity(days: int = Query(30, le=90)):
 
 
 @router.get("/table-access")
+@ttl_cache(seconds=60)
 def get_table_access(limit: int = Query(20, le=100)):
     """Most-accessed tables across Meridian schemas."""
     query = (
@@ -121,6 +128,7 @@ def get_table_access(limit: int = Query(20, le=100)):
 
 
 @router.get("/compute-consumption")
+@ttl_cache(seconds=60)
 def get_compute_consumption(days: int = Query(30, le=90)):
     """Daily compute consumption (DBUs) by SKU."""
     query = (
