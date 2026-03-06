@@ -14,6 +14,7 @@ Packaged as a **Databricks Asset Bundle (DAB)** — deploy to any Unity Catalog-
 | **AI/BI Dashboards** | Internal analytics dashboard built on Metric Views |
 | **Genie Spaces** | 3 spaces (Research, Internal, Regulatory) with sample questions and SQL snippets |
 | **Vector Search** | Semantic search over article abstracts via `databricks-gte-large-en` embeddings |
+| **Foundation Model API** | RAG-powered AI Research Assistant (Vector Search retrieval + LLM generation with cited sources) |
 | **Databricks App** | FastAPI + React portal with profile switcher and 4 views |
 | **Delta Sharing** | Share regulatory data products with external recipients (no-copy access) |
 | **Governance** | Row filters, column masks, table tags, lineage, system tables meta-analytics |

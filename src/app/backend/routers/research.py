@@ -1,8 +1,8 @@
 """Research API endpoints for the Dr. Anika Park view.
 
 Provides article search, author lookup, citation exploration,
-and semantic search via Vector Search — all scoped to the research
-business unit.
+semantic search via Vector Search, and RAG-powered Q&A using
+Foundation Model API — all scoped to the research business unit.
 """
 
 import logging
@@ -10,12 +10,14 @@ import os
 
 from backend.db import execute_query
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
 
 router = APIRouter()
 
 log = logging.getLogger(__name__)
 _catalog = os.environ.get("MERIDIAN_CATALOG", "serverless_stable_k2zkdm_catalog")
 _vs_index = f"{_catalog}.meridian_research.articles_vs_index"
+_llm_endpoint = os.environ.get("MERIDIAN_LLM_ENDPOINT", "databricks-meta-llama-3-3-70b-instruct")
 
 
 @router.get("/articles")
@@ -173,3 +175,157 @@ def get_mesh_terms(limit: int = Query(50, le=500)):
     """Top MeSH terms by article count."""
     query = f"SELECT * FROM {_catalog}.meridian_research.mesh_terms ORDER BY article_count DESC LIMIT {int(limit)}"
     return execute_query(query)
+
+
+class AskRequest(BaseModel):
+    question: str
+    history: list[dict[str, str]] | None = None
+
+
+def _retrieve_articles(question: str, limit: int = 8) -> list[dict]:
+    """Retrieve relevant articles from Vector Search for RAG context."""
+    from databricks.sdk import WorkspaceClient
+
+    w = WorkspaceClient(
+        host=f"https://{os.environ['DATABRICKS_HOST']}",
+        client_id=os.environ["DATABRICKS_CLIENT_ID"],
+        client_secret=os.environ["DATABRICKS_CLIENT_SECRET"],
+    )
+    results = w.vector_search_indexes.query_index(
+        index_name=_vs_index,
+        columns=[
+            "article_id", "doi", "title", "abstract", "journal",
+            "publication_date", "publication_year", "source",
+            "is_preprint", "publication_type", "citation_count",
+        ],
+        query_text=question,
+        num_results=limit,
+    )
+    columns = results.result.column_names
+    articles = []
+    for row in results.result.data_array:
+        article = dict(zip(columns, row))
+        article["similarity_score"] = row[-1]
+        articles.append(article)
+    return articles
+
+
+_SYSTEM_PROMPT = """You are the Meridian Research Assistant, an AI that answers biomedical and scientific research questions using a curated database of peer-reviewed articles and preprints.
+
+RULES:
+- Base your answer ONLY on the provided articles. Do not fabricate information.
+- Cite articles using [1], [2], etc. matching the numbered source list.
+- For each claim, cite the specific article(s) that support it.
+- Distinguish between peer-reviewed publications and preprints (flag preprints explicitly).
+- Note study type (RCT, meta-analysis, cohort, case study) and sample size when available.
+- Prioritize meta-analyses and systematic reviews over individual studies.
+- Include publication year to help assess recency.
+- If the articles don't contain enough information, say so honestly.
+- Use the phrasing "the available articles suggest..." not "research proves..."
+- Keep your response concise but thorough (2-4 paragraphs)."""
+
+
+def _build_context(articles: list[dict]) -> str:
+    """Format retrieved articles as numbered context for the LLM."""
+    parts = []
+    for i, a in enumerate(articles, 1):
+        preprint_flag = " [PREPRINT]" if str(a.get("is_preprint", "")).lower() == "true" else ""
+        pub_type = f" | {a['publication_type']}" if a.get("publication_type") else ""
+        abstract = (a.get("abstract") or "No abstract available.")[:1500]
+        parts.append(
+            f"[{i}] {a.get('title', 'Untitled')}{preprint_flag}\n"
+            f"    Journal: {a.get('journal', 'Unknown')} ({a.get('publication_year', '?')}){pub_type}\n"
+            f"    DOI: {a.get('doi', 'N/A')} | Citations: {a.get('citation_count', 0)}\n"
+            f"    Abstract: {abstract}"
+        )
+    return "\n\n".join(parts)
+
+
+@router.post("/ask")
+def ask_research_question(request: AskRequest):
+    """RAG-powered Research Q&A: retrieves relevant articles via Vector Search,
+    then generates a cited answer using Foundation Model API."""
+    try:
+        articles = _retrieve_articles(request.question)
+    except Exception as e:
+        log.warning("Vector Search retrieval failed: %s", e)
+        return {
+            "answer": "I'm unable to search the research database right now. Please try the semantic search tab instead.",
+            "sources": [],
+            "error": str(e),
+        }
+
+    if not articles:
+        return {
+            "answer": "No relevant articles were found for your question. Try rephrasing or broadening your query.",
+            "sources": [],
+        }
+
+    context = _build_context(articles)
+    messages = [{"role": "system", "content": _SYSTEM_PROMPT}]
+
+    if request.history:
+        for msg in request.history[-6:]:
+            messages.append({"role": msg.get("role", "user"), "content": msg.get("content", "")})
+
+    messages.append({
+        "role": "user",
+        "content": f"Based on the following research articles, answer this question:\n\n"
+                   f"**Question:** {request.question}\n\n"
+                   f"**Articles:**\n{context}",
+    })
+
+    try:
+        from databricks.sdk import WorkspaceClient
+
+        w = WorkspaceClient(
+            host=f"https://{os.environ['DATABRICKS_HOST']}",
+            client_id=os.environ["DATABRICKS_CLIENT_ID"],
+            client_secret=os.environ["DATABRICKS_CLIENT_SECRET"],
+        )
+        response = w.serving_endpoints.query(
+            name=_llm_endpoint,
+            messages=messages,
+            max_tokens=1024,
+            temperature=0.1,
+        )
+        answer = response.choices[0].message.content
+    except Exception as e:
+        log.error("Foundation Model API call failed: %s", e)
+        return {
+            "answer": "I found relevant articles but couldn't generate a summary. The source articles are listed below.",
+            "sources": [
+                {
+                    "index": i + 1,
+                    "article_id": a.get("article_id"),
+                    "title": a.get("title"),
+                    "doi": a.get("doi"),
+                    "journal": a.get("journal"),
+                    "publication_year": a.get("publication_year"),
+                    "is_preprint": a.get("is_preprint"),
+                    "publication_type": a.get("publication_type"),
+                    "citation_count": a.get("citation_count"),
+                    "similarity_score": a.get("similarity_score"),
+                }
+                for i, a in enumerate(articles)
+            ],
+            "error": str(e),
+        }
+
+    sources = [
+        {
+            "index": i + 1,
+            "article_id": a.get("article_id"),
+            "title": a.get("title"),
+            "doi": a.get("doi"),
+            "journal": a.get("journal"),
+            "publication_year": a.get("publication_year"),
+            "is_preprint": a.get("is_preprint"),
+            "publication_type": a.get("publication_type"),
+            "citation_count": a.get("citation_count"),
+            "similarity_score": a.get("similarity_score"),
+        }
+        for i, a in enumerate(articles)
+    ]
+
+    return {"answer": answer, "sources": sources}

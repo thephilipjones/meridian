@@ -96,3 +96,48 @@ resources:
       permissions:
         - level: CAN_MANAGE
           group_name: users
+
+    daily_refresh_job:
+      name: "Meridian — Daily Refresh"
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: "America/New_York"
+        pause_status: PAUSED
+      run_as:
+        user_name: ${workspace.current_user.userName}
+      tasks:
+        - task_key: run_research
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.research_pipeline.id}
+        - task_key: run_internal
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.internal_pipeline.id}
+        - task_key: run_regulatory
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.regulatory_pipeline.id}
+        - task_key: create_metric_views
+          notebook_task:
+            notebook_path: ../src/notebooks/04_metric_views.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+          depends_on:
+            - task_key: run_internal
+        - task_key: refresh_system_tables
+          notebook_task:
+            notebook_path: ../src/notebooks/05_system_tables.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+          depends_on:
+            - task_key: run_research
+            - task_key: run_internal
+            - task_key: run_regulatory
+        - task_key: sync_vector_search
+          notebook_task:
+            notebook_path: ../src/notebooks/08_vs_sync.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+          depends_on:
+            - task_key: run_research
+      permissions:
+        - level: CAN_MANAGE
+          group_name: users

@@ -19,11 +19,14 @@
 import json
 
 dbutils.widgets.text("catalog_name", "serverless_stable_k2zkdm_catalog")
-catalog = dbutils.widgets.get("catalog_name")
+dbutils.widgets.text("research_space_id", "01f118c5d7e01a32a58159a70e55160c")
+dbutils.widgets.text("internal_space_id", "01f118c5ddb81e3dba76005e6020b2bc")
+dbutils.widgets.text("regulatory_space_id", "01f118ce34db1cfeb9085c37cea33f8d")
 
-RESEARCH_SPACE_ID = "01f118c5d7e01a32a58159a70e55160c"
-INTERNAL_SPACE_ID = "01f118c5ddb81e3dba76005e6020b2bc"
-REGULATORY_SPACE_ID = "01f118ce34db1cfeb9085c37cea33f8d"
+catalog = dbutils.widgets.get("catalog_name")
+RESEARCH_SPACE_ID = dbutils.widgets.get("research_space_id")
+INTERNAL_SPACE_ID = dbutils.widgets.get("internal_space_id")
+REGULATORY_SPACE_ID = dbutils.widgets.get("regulatory_space_id")
 
 # COMMAND ----------
 

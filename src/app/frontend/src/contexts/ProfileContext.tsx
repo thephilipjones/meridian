@@ -41,7 +41,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
             avatar_initials: "SC",
             nav_tabs: ["Sales Dashboard", "Product Usage", "Genie"],
             business_unit: "internal",
-            genie_space_id: null,
+            genie_space_id: "01f118c5ddb81e3dba76005e6020b2bc",
           },
           {
             id: "james",
@@ -51,7 +51,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
             avatar_initials: "JR",
             nav_tabs: ["Data Catalog", "Genie", "Connect Your Environment"],
             business_unit: "regulatory",
-            genie_space_id: null,
+            genie_space_id: "01f118ce34db1cfeb9085c37cea33f8d",
           },
           {
             id: "anika",
@@ -64,7 +64,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
               "Paper Browser",
             ],
             business_unit: "research",
-            genie_space_id: null,
+            genie_space_id: "01f118c5d7e01a32a58159a70e55160c",
           },
         ];
         setProfiles(fallback);

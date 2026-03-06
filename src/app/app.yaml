@@ -11,12 +11,14 @@ env:
     value: "/sql/1.0/warehouses/e8eadc734c07e7f5"
   - name: MERIDIAN_CATALOG
     value: "serverless_stable_k2zkdm_catalog"
+  - name: MERIDIAN_LLM_ENDPOINT
+    value: "databricks-meta-llama-3-3-70b-instruct"
   - name: RESEARCH_GENIE_SPACE_ID
-    valueFrom: genie-research
+    value: "01f118c5d7e01a32a58159a70e55160c"
   - name: REGULATORY_GENIE_SPACE_ID
-    valueFrom: genie-regulatory
+    value: "01f118ce34db1cfeb9085c37cea33f8d"
   - name: INTERNAL_GENIE_SPACE_ID
-    valueFrom: genie-internal
+    value: "01f118c5ddb81e3dba76005e6020b2bc"
 
 resources:
   - name: sql_warehouse

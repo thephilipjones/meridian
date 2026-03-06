@@ -2,11 +2,13 @@
 #
 # NOTE: As of March 2026, Genie spaces are not fully declarative in DABs.
 # This YAML is documentation only — spaces are managed via REST API.
-# See docs/DEPLOYMENT.md for create/update instructions and
-# src/notebooks/07_genie_enrichment.py for sample questions and SQL snippets.
+#
+# To create/update spaces:
+#   1. Run src/notebooks/09_create_genie_spaces.py (creates spaces, grants perms, binds resources)
+#   2. Run src/notebooks/07_genie_enrichment.py (applies SQL snippets — space IDs are widget params)
 #
 # Each space includes: tables, custom_instructions, and sample_questions.
-# These are applied via PATCH /api/2.0/genie/spaces/{space_id}.
+# These are applied via POST/PATCH /api/2.0/genie/spaces/{space_id}.
 
 genie_spaces:
   research_assistant:
