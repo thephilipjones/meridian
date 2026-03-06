@@ -99,14 +99,9 @@ function ResearchQA() {
                       <span>({article.publication_year})</span>
                     )}
                     {article.doi && (
-                      <a
-                        href={`https://doi.org/${article.doi}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-meridian-600 hover:underline"
-                      >
+                      <span className="font-mono text-meridian-600">
                         DOI: {article.doi}
-                      </a>
+                      </span>
                     )}
                   </div>
                 </div>

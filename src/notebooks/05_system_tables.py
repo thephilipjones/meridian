@@ -41,20 +41,20 @@ print(f"Schema '{catalog}.meridian_system' ready")
 # COMMAND ----------
 
 spark.sql(f"""
-    CREATE OR REPLACE MATERIALIZED VIEW {catalog}.meridian_system.query_activity
+    CREATE OR REPLACE VIEW {catalog}.meridian_system.query_activity
     COMMENT 'Daily query activity against Meridian catalog assets — sourced from system.access.audit'
     AS
-    FROM system.access.audit
-    |> WHERE event_date >= CURRENT_DATE - INTERVAL 90 DAYS
-           AND request_params.catalog_name = '{catalog}'
-    |> SELECT
+    SELECT
         event_date,
         user_identity.email AS user_email,
         action_name,
         COUNT(*) AS query_count
-    |> GROUP BY event_date, user_identity.email, action_name
+    FROM system.access.audit
+    WHERE event_date >= CURRENT_DATE - INTERVAL 90 DAYS
+      AND request_params.catalog_name = '{catalog}'
+    GROUP BY event_date, user_identity.email, action_name
 """)
-print("Materialized view 'query_activity' created")
+print("View 'query_activity' created")
 
 # COMMAND ----------
 
@@ -68,22 +68,22 @@ print("Materialized view 'query_activity' created")
 # COMMAND ----------
 
 spark.sql(f"""
-    CREATE OR REPLACE MATERIALIZED VIEW {catalog}.meridian_system.table_access_patterns
+    CREATE OR REPLACE VIEW {catalog}.meridian_system.table_access_patterns
     COMMENT 'Table-level access frequency across Meridian schemas — most queried data products'
     AS
-    FROM system.access.audit
-    |> WHERE event_date >= CURRENT_DATE - INTERVAL 90 DAYS
-           AND request_params.catalog_name = '{catalog}'
-           AND request_params.table_name IS NOT NULL
-    |> SELECT
+    SELECT
         request_params.schema_name AS schema_name,
         request_params.table_name AS table_name,
         COUNT(DISTINCT user_identity.email) AS unique_users,
         COUNT(*) AS access_count,
         MAX(event_date) AS last_accessed
-    |> GROUP BY request_params.schema_name, request_params.table_name
+    FROM system.access.audit
+    WHERE event_date >= CURRENT_DATE - INTERVAL 90 DAYS
+      AND request_params.catalog_name = '{catalog}'
+      AND request_params.table_name IS NOT NULL
+    GROUP BY request_params.schema_name, request_params.table_name
 """)
-print("Materialized view 'table_access_patterns' created")
+print("View 'table_access_patterns' created")
 
 # COMMAND ----------
 
@@ -97,19 +97,19 @@ print("Materialized view 'table_access_patterns' created")
 # COMMAND ----------
 
 spark.sql(f"""
-    CREATE OR REPLACE MATERIALIZED VIEW {catalog}.meridian_system.compute_consumption
+    CREATE OR REPLACE VIEW {catalog}.meridian_system.compute_consumption
     COMMENT 'Daily compute consumption (DBUs) by SKU — cost profile for the Meridian platform'
     AS
-    FROM system.billing.usage
-    |> WHERE usage_date >= CURRENT_DATE - INTERVAL 90 DAYS
-    |> SELECT
+    SELECT
         usage_date,
         sku_name,
         usage_unit,
         SUM(usage_quantity) AS total_dbus
-    |> GROUP BY usage_date, sku_name, usage_unit
+    FROM system.billing.usage
+    WHERE usage_date >= CURRENT_DATE - INTERVAL 90 DAYS
+    GROUP BY usage_date, sku_name, usage_unit
 """)
-print("Materialized view 'compute_consumption' created")
+print("View 'compute_consumption' created")
 
 # COMMAND ----------
 
@@ -137,8 +137,9 @@ print(f"Grants applied for SP {sp_client_id} on meridian_system")
 # COMMAND ----------
 
 display(spark.sql(f"""
+    SELECT table_name, table_type, comment
     FROM {catalog}.information_schema.tables
-    |> WHERE table_schema = 'meridian_system'
-    |> SELECT table_name, table_type, comment
-    |> ORDER BY table_name
+    WHERE table_schema = 'meridian_system'
+      AND table_type IN ('VIEW', 'MATERIALIZED_VIEW')
+    ORDER BY table_name
 """))

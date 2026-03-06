@@ -5,9 +5,10 @@
 
 """Generate synthetic citation relationships for Meridian Research.
 
-Creates citation links between DOIs extracted from the actual PubMed
-article pool, producing a realistic co-citation graph where titles
-and years resolve correctly in the gold citations table.
+Reads DOIs from the existing PubMed staging files (or articles table)
+and generates realistic citation edges between them. On Databricks,
+DOIs are pulled from the articles gold table. For local testing, the
+PubMed generator is called to produce a DOI pool.
 """
 
 import json
@@ -18,15 +19,29 @@ dbutils.widgets.text("catalog_name", "serverless_stable_k2zkdm_catalog")  # noqa
 _catalog = dbutils.widgets.get("catalog_name")  # noqa: F821
 
 STAGING_PATH = f"/Volumes/{_catalog}/meridian_staging/crossref"
+PUBMED_STAGING = f"/Volumes/{_catalog}/meridian_staging/pubmed"
 
 random.seed(45)
 
 RECORDS_PER_FILE = 500
 
+# COMMAND ----------
 
-def extract_doi_pool_from_articles(articles: list[dict]) -> list[str]:
-    """Extract DOIs from a list of generated articles."""
-    return [a["doi"] for a in articles if a.get("doi")]
+
+def _read_dois_from_staging(pubmed_path: str) -> list[str]:
+    """Read DOIs from existing PubMed staging JSON-lines files."""
+    dois = []
+    if not os.path.isdir(pubmed_path):
+        return dois
+    for fname in sorted(os.listdir(pubmed_path)):
+        if not fname.endswith(".json"):
+            continue
+        with open(os.path.join(pubmed_path, fname)) as f:
+            for line in f:
+                record = json.loads(line)
+                if record.get("doi"):
+                    dois.append(record["doi"])
+    return dois
 
 
 def generate_citations(doi_pool: list[str]) -> list[dict]:
@@ -67,18 +82,19 @@ def write_json_files(citations: list[dict], output_path: str) -> list[str]:
 
     return filepaths
 
+# COMMAND ----------
 
-def main(output_path: str | None = None, articles: list[dict] | None = None):
-    path = output_path or STAGING_PATH
-    if articles is None:
-        from src.data_gen.generate_pubmed import generate_articles
-        articles = generate_articles(5000)
-    doi_pool = extract_doi_pool_from_articles(articles)
-    citations = generate_citations(doi_pool)
-    filepaths = write_json_files(citations, path)
-    print(f"Generated {len(citations)} citations from {len(doi_pool)} DOIs in {len(filepaths)} files -> {path}")
-    return citations
+doi_pool = _read_dois_from_staging(PUBMED_STAGING)
+print(f"Read {len(doi_pool)} DOIs from PubMed staging files")
 
+if len(doi_pool) == 0:
+    print("No staging files found — falling back to generating DOIs from PubMed generator")
+    from src.data_gen.generate_pubmed import generate_articles  # noqa: E402
+    articles = generate_articles(5000)
+    doi_pool = [a["doi"] for a in articles if a.get("doi")]
 
-if __name__ == "__main__":
-    main()
+# COMMAND ----------
+
+citations = generate_citations(doi_pool)
+filepaths = write_json_files(citations, STAGING_PATH)
+print(f"Generated {len(citations)} citations from {len(doi_pool)} DOIs in {len(filepaths)} files -> {STAGING_PATH}")

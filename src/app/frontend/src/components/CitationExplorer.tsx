@@ -37,15 +37,8 @@ export default function CitationExplorer() {
     setLoading(false);
   };
 
-  const doiLink = (doi: string) => (
-    <a
-      href={`https://doi.org/${doi}`}
-      target="_blank"
-      rel="noreferrer"
-      className="text-meridian-600 hover:underline"
-    >
-      {doi}
-    </a>
+  const doiLabel = (doi: string) => (
+    <span className="font-mono text-meridian-600">{doi}</span>
   );
 
   return (
@@ -113,9 +106,9 @@ export default function CitationExplorer() {
                   </td>
                   <td className="py-2.5 text-xs">
                     <div className="flex gap-2">
-                      {doiLink(c.citing_doi)}
+                      {doiLabel(c.citing_doi)}
                       <span className="text-gray-300">→</span>
-                      {doiLink(c.cited_doi)}
+                      {doiLabel(c.cited_doi)}
                     </div>
                   </td>
                 </tr>
