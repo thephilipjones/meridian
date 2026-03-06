@@ -48,8 +48,8 @@ databricks bundle run run_pipelines_job -t dev
 # 8. Set up system tables and Vector Search
 #    Run notebooks 05_system_tables.py and 06_vector_search.py
 
-# 9. Enrich Genie spaces with sample questions
-#    Run notebook 07_genie_enrichment.py
+# 9. Create and enrich Genie spaces
+#    Run notebooks 07_create_genie_spaces.py then 08_genie_enrichment.py
 
 # 10. Deploy the Meridian Portal app
 databricks bundle run deploy_app -t dev

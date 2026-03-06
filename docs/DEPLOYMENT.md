@@ -100,21 +100,49 @@ SELECT COUNT(*) FROM meridian.research.articles;
 SELECT COUNT(*) FROM meridian.internal.sales_pipeline;
 ```
 
-## Step 9: Set Up Genie Spaces
+## Step 9: Set Up Vector Search
 
-Genie spaces may need manual creation. See `resources/genie_spaces.yml` for the configuration:
+Creates the VS endpoint, source table, and delta-sync index for semantic search:
 
-1. Go to **SQL > Genie Spaces** in the Databricks workspace
-2. Create "Meridian Research Assistant" with:
-   - Tables: `meridian.research.articles`, `meridian.research.authors`, `meridian.research.citations`, `meridian.research.mesh_terms`
-   - Custom instructions: copy from `resources/genie_spaces.yml`
-3. Note the Genie space ID
-4. Update `src/app/backend/profiles.py` with the `genie_space_id` for each profile
+```bash
+# Run 06_vector_search.py via the workspace or as a notebook task
+# This creates endpoint 'meridian-research-vs' and index 'articles_vs_index'
+# with managed embeddings on article abstracts (takes ~5 min to sync)
+```
+
+**Why a separate source table?** SDP gold tables are materialized views that don't support Change Data Feed. The notebook creates `articles_vs_source` (a managed Delta table with CDF enabled) that the VS index syncs from.
 
 ## Step 10: Deploy the App
 
+Use the automated deploy script:
+
+```bash
+./scripts/deploy.sh                    # standard deploy
+./scripts/deploy.sh --setup-genie     # also create/update Genie spaces
+```
+
+The script handles all steps: frontend build, bundle deploy, `frontend/dist` upload, app deploy, and SP permission grants. With `--setup-genie`, it also runs `genie_setup_job` which creates all 3 Genie spaces via REST API and applies enrichment (sample questions, SQL snippets).
+
+**Manual deploy (if needed):**
+
 ```bash
 databricks bundle run deploy_app -t dev
+```
+
+## Step 11: Set Up Genie Spaces (if not using --setup-genie)
+
+Run the Genie setup job to create all 3 spaces programmatically:
+
+```bash
+databricks bundle run genie_setup_job -t dev
+```
+
+This runs `07_create_genie_spaces.py` (creates/updates spaces via REST API, binds resources to the app) followed by `08_genie_enrichment.py` (applies sample questions and SQL snippets).
+
+After running the setup job, copy the output `app.yaml` snippet (printed by `07_create_genie_spaces.py`), paste it into `src/app/app.yaml`, and redeploy the app:
+
+```bash
+databricks apps deploy meridian-portal --source-code-path "..." --profile k2zkdm
 ```
 
 ## Verification Checklist

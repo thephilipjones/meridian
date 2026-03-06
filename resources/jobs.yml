@@ -97,6 +97,28 @@ resources:
         - level: CAN_MANAGE
           group_name: users
 
+    genie_setup_job:
+      name: "Meridian — Genie Space Setup"
+      run_as:
+        user_name: ${workspace.current_user.userName}
+      tasks:
+        - task_key: create_spaces
+          notebook_task:
+            notebook_path: ../src/notebooks/07_create_genie_spaces.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              warehouse_id: ${var.warehouse_id}
+        - task_key: enrich_spaces
+          notebook_task:
+            notebook_path: ../src/notebooks/08_genie_enrichment.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+          depends_on:
+            - task_key: create_spaces
+      permissions:
+        - level: CAN_MANAGE
+          group_name: users
+
     daily_refresh_job:
       name: "Meridian — Daily Refresh"
       schedule:

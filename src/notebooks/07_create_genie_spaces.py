@@ -13,7 +13,7 @@
 # MAGIC 2. CLI commands to bind resources to the app service principal
 # MAGIC 3. Updated `app.yaml` snippet ready to paste
 # MAGIC
-# MAGIC > **Run this once per workspace, before `07_genie_enrichment.py`.**
+# MAGIC > **Run this once per workspace, before `08_genie_enrichment.py`.**
 
 # COMMAND ----------
 
@@ -46,6 +46,7 @@ SPACE_DEFINITIONS = {
             "from PubMed, arXiv, and Crossref."
         ),
         "table_identifiers": [
+            f"{catalog}.meridian_research.article_entities",
             f"{catalog}.meridian_research.articles",
             f"{catalog}.meridian_research.authors",
             f"{catalog}.meridian_research.citations",
@@ -297,7 +298,7 @@ resources = [
 for key, definition in SPACE_DEFINITIONS.items():
     resources.append({
         "name": definition["resource_name"],
-        "genie_space": {"id": space_ids[key], "permission": "CAN_RUN"},
+        "genie_space": {"space_id": space_ids[key], "permission": "CAN_RUN"},
     })
 
 try:
@@ -363,7 +364,7 @@ print(yaml_snippet)
 # MAGIC %md
 # MAGIC ## Output — Enrichment Notebook IDs
 # MAGIC
-# MAGIC If you need to update `07_genie_enrichment.py` hardcoded IDs:
+# MAGIC If you need to update `08_genie_enrichment.py` hardcoded IDs:
 
 # COMMAND ----------
 

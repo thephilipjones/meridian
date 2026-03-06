@@ -20,6 +20,8 @@ resources:
             path: ../src/pipelines/research/silver_research.py
         - notebook:
             path: ../src/pipelines/research/gold_research.py
+        - notebook:
+            path: ../src/pipelines/research/silver_nlp_enrichment.py
       configuration:
         meridian.catalog: ${var.catalog_name}
       permissions:

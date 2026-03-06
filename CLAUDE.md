@@ -32,7 +32,7 @@ Databricks Asset Bundle (DAB) demo platform. Deploys to FEVM workspace via CLI p
 ## App Runtime Environment
 - The App runtime auto-injects: `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`, `DATABRICKS_APP_PORT`
 - It does NOT inject `DATABRICKS_TOKEN` or `DATABRICKS_SERVER_HOSTNAME` — don't rely on these
-- `valueFrom` in `app.yaml` resolves resource keys to values (e.g. `valueFrom: genie-research` → space ID)
+- `valueFrom` in `app.yaml` does NOT work for `genie_space` resources — runtime returns "Error resolving resource". Use hardcoded `value:` for Genie space IDs.
 - For SQL warehouse: set `DATABRICKS_HTTP_PATH` as a plain `value:` — `valueFrom` for warehouse properties does not inject correctly
 - For auth in `db.py`: use `WorkspaceClient(host=..., client_id=..., client_secret=...)` to get an OAuth token, then pass to `dbsql.connect(access_token=...)`
 
@@ -42,6 +42,12 @@ Databricks Asset Bundle (DAB) demo platform. Deploys to FEVM workspace via CLI p
 - The SP also needs explicit grants: `GRANT USE CATALOG`, `GRANT USE SCHEMA, SELECT ON SCHEMA` for each schema
 - Genie space permissions: `PATCH /api/2.0/permissions/genie/{space_id}` with `service_principal_name` = SP's application/client ID (UUID), not display name
 - SDP gold tables are `MATERIALIZED_VIEW` type, not `TABLE` — use `table_type IN ('TABLE', 'MATERIALIZED_VIEW')` in information_schema queries
+
+## Vector Search
+- SDP gold tables are materialized views — VS requires Delta tables with CDF. Use a managed snapshot table (`articles_vs_source`) as the index source.
+- Use `STORAGE_OPTIMIZED` endpoint type (not `STANDARD`) — `STANDARD` gets stuck on "pending endpoint provisioning" in serverless workspaces
+- VS sync notebook (`09_vs_sync.py`) must refresh `articles_vs_source` before triggering index sync
+- Bind resources via `databricks apps update` using `space_id` field (not `id`) for genie_space resources
 
 ## Genie Integration (Best Practices)
 - Use SDK typed methods: `w.genie.start_conversation_and_wait()` and `w.genie.create_message_and_wait()` — handles polling and retries

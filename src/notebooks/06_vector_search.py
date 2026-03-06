@@ -20,7 +20,7 @@ catalog = dbutils.widgets.get("catalog_name")
 
 VS_ENDPOINT_NAME = "meridian-research-vs"
 VS_INDEX_NAME = f"{catalog}.meridian_research.articles_vs_index"
-SOURCE_TABLE = f"{catalog}.meridian_research.articles"
+SOURCE_TABLE = f"{catalog}.meridian_research.articles_vs_source"
 
 # COMMAND ----------
 
@@ -41,7 +41,7 @@ except Exception:
     print(f"Creating endpoint '{VS_ENDPOINT_NAME}'...")
     w.vector_search_endpoints.create_endpoint(
         name=VS_ENDPOINT_NAME,
-        endpoint_type="STANDARD",
+        endpoint_type="STORAGE_OPTIMIZED",
     )
     print(f"Endpoint '{VS_ENDPOINT_NAME}' creation initiated (may take a few minutes)")
 
@@ -70,9 +70,30 @@ else:
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## 3. Create Delta Sync Index with Managed Embeddings
+# MAGIC ## 3. Create VS Source Table
 # MAGIC
-# MAGIC The index syncs from the `articles` gold table, embedding the
+# MAGIC SDP gold tables are materialized views which don't support Change Data Feed.
+# MAGIC We create a managed Delta table snapshot for VS indexing.
+
+# COMMAND ----------
+
+spark.sql(f"""
+    CREATE TABLE IF NOT EXISTS {SOURCE_TABLE}
+    TBLPROPERTIES (delta.enableChangeDataFeed = true)
+    AS SELECT article_id, doi, title, abstract, journal,
+              publication_date, publication_year, source,
+              is_preprint, publication_type, citation_count
+    FROM {catalog}.meridian_research.articles
+""")
+print(f"Source table '{SOURCE_TABLE}' ready")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ---
+# MAGIC ## 4. Create Delta Sync Index with Managed Embeddings
+# MAGIC
+# MAGIC The index syncs from `articles_vs_source`, embedding the
 # MAGIC `abstract` column using `databricks-gte-large-en`. Primary key
 # MAGIC is `article_id`. Triggered sync — articles don't change often.
 
@@ -105,7 +126,7 @@ except Exception:
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## 4. Trigger Initial Sync
+# MAGIC ## 5. Trigger Initial Sync
 
 # COMMAND ----------
 
@@ -119,7 +140,7 @@ except Exception as e:
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ## 5. Verify — Test Query
+# MAGIC ## 6. Verify — Test Query
 
 # COMMAND ----------
 

@@ -13,6 +13,32 @@ dbutils.widgets.text("catalog_name", "serverless_stable_k2zkdm_catalog")
 catalog = dbutils.widgets.get("catalog_name")
 
 VS_INDEX_NAME = f"{catalog}.meridian_research.articles_vs_index"
+SOURCE_TABLE = f"{catalog}.meridian_research.articles_vs_source"
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Refresh VS Source Table
+# MAGIC
+# MAGIC Gold tables are materialized views; the VS source table is a
+# MAGIC managed Delta snapshot that needs to be refreshed before sync.
+
+# COMMAND ----------
+
+spark.sql(f"""
+    CREATE OR REPLACE TABLE {SOURCE_TABLE}
+    TBLPROPERTIES (delta.enableChangeDataFeed = true)
+    AS SELECT article_id, doi, title, abstract, journal,
+              publication_date, publication_year, source,
+              is_preprint, publication_type, citation_count
+    FROM {catalog}.meridian_research.articles
+""")
+print(f"Refreshed '{SOURCE_TABLE}'")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Trigger Index Sync
 
 # COMMAND ----------
 

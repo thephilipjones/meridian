@@ -13,12 +13,14 @@ set -euo pipefail
 #   ./scripts/deploy.sh --target demo      # deploy to a specific target
 #   ./scripts/deploy.sh --skip-build       # skip frontend build
 #   ./scripts/deploy.sh --skip-permissions # skip SP permission grants
+#   ./scripts/deploy.sh --setup-genie     # create/update Genie spaces after deploy
 
 PROFILE="${PROFILE:-k2zkdm}"
 TARGET="${TARGET:-dev}"
 APP_NAME="meridian-portal"
 SKIP_BUILD=false
 SKIP_PERMISSIONS=false
+SETUP_GENIE=false
 WORKSPACE_USER=""
 
 while [[ $# -gt 0 ]]; do
@@ -27,6 +29,7 @@ while [[ $# -gt 0 ]]; do
         --profile) PROFILE="$2"; shift 2 ;;
         --skip-build) SKIP_BUILD=true; shift ;;
         --skip-permissions) SKIP_PERMISSIONS=true; shift ;;
+        --setup-genie) SETUP_GENIE=true; shift ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
@@ -52,23 +55,23 @@ echo ""
 
 # Step 0: Build frontend (unless skipped)
 if [[ "$SKIP_BUILD" == false ]]; then
-    echo "[0/3] Building frontend..."
+    echo "[0/4] Building frontend..."
     (cd "$FRONTEND_DIR" && npm run build)
     echo "      Frontend built successfully."
     echo ""
 else
-    echo "[0/3] Skipping frontend build (--skip-build)"
+    echo "[0/4] Skipping frontend build (--skip-build)"
     echo ""
 fi
 
 # Step 1: Bundle deploy
-echo "[1/3] Deploying bundle..."
+echo "[1/4] Deploying bundle..."
 databricks bundle deploy -t "$TARGET"
 echo "      Bundle deployed."
 echo ""
 
 # Step 2: Upload frontend/dist (not synced by bundle)
-echo "[2/3] Uploading frontend/dist to workspace..."
+echo "[2/4] Uploading frontend/dist to workspace..."
 databricks workspace import-dir "${FRONTEND_DIR}/dist" \
     "${WORKSPACE_PATH}/frontend/dist" \
     --profile "$PROFILE" --overwrite
@@ -76,7 +79,7 @@ echo "      Frontend dist uploaded."
 echo ""
 
 # Step 3: Deploy the app (takes snapshot, starts container)
-echo "[3/3] Deploying app..."
+echo "[3/4] Deploying app..."
 databricks apps deploy "$APP_NAME" \
     --source-code-path "${WORKSPACE_PATH}" \
     --profile "$PROFILE"
@@ -85,7 +88,7 @@ echo ""
 
 # Step 4: Grant SP permissions (unless skipped)
 if [[ "$SKIP_PERMISSIONS" == false ]]; then
-    echo "[+] Checking SP permissions..."
+    echo "[4/4] Checking SP permissions..."
     CATALOG=$(databricks bundle validate -t "$TARGET" 2>/dev/null | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
@@ -108,6 +111,21 @@ print(data.get('variables', {}).get('catalog_name', {}).get('value', 'serverless
         \"statement\": \"GRANT USE CATALOG ON CATALOG ${CATALOG} TO \\\`${APP_NAME}\\\`\",
         \"wait_timeout\": \"30s\"
     }" > /dev/null 2>&1 && echo "    Granted USE CATALOG" || echo "    WARNING: Could not grant USE CATALOG"
+    echo ""
+fi
+
+# Step 5: Genie space setup (if requested)
+if [[ "$SETUP_GENIE" == true ]]; then
+    echo "[+] Setting up Genie spaces..."
+    echo "    Running genie_setup_job (creates spaces, binds resources, applies enrichment)..."
+    databricks bundle run genie_setup_job -t "$TARGET"
+    echo "    Genie spaces configured."
+    echo ""
+    echo "    Re-deploying app to pick up valueFrom resource bindings..."
+    databricks apps deploy "$APP_NAME" \
+        --source-code-path "${WORKSPACE_PATH}" \
+        --profile "$PROFILE"
+    echo "    App re-deployed with updated Genie bindings."
     echo ""
 fi
 
