@@ -2,11 +2,11 @@
 # MAGIC %md
 # MAGIC # Meridian Insights — System Tables Meta-Analytics
 # MAGIC
-# MAGIC Creates materialized views in `meridian_system` that aggregate audit
-# MAGIC and billing system tables, filtered to the Meridian catalog. These
-# MAGIC power the "Platform Analytics" tab in Sarah Chen's Internal view.
+# MAGIC Pre-computes snapshot tables in `meridian_system` from audit and billing
+# MAGIC system tables. Snapshot tables are instant to query from the app —
+# MAGIC unlike views which re-scan on every request.
 # MAGIC
-# MAGIC > *"Meridian monitors who accesses what data and how much compute it costs."*
+# MAGIC **Re-run this notebook periodically to refresh the snapshots.**
 
 # COMMAND ----------
 
@@ -27,7 +27,12 @@ catalog = dbutils.widgets.get("catalog_name")
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.meridian_system")
 spark.sql(f"USE CATALOG {catalog}")
-print(f"Schema '{catalog}.meridian_system' ready")
+
+for v in ["query_activity", "table_access_patterns", "compute_consumption"]:
+    spark.sql(f"DROP TABLE IF EXISTS {catalog}.meridian_system.{v}")
+    spark.sql(f"DROP VIEW IF EXISTS {catalog}.meridian_system.{v}")
+
+print(f"Schema '{catalog}.meridian_system' ready (stale objects dropped)")
 
 # COMMAND ----------
 
@@ -35,14 +40,14 @@ print(f"Schema '{catalog}.meridian_system' ready")
 # MAGIC ---
 # MAGIC ## 1. Query Activity
 # MAGIC
-# MAGIC Aggregated query activity from `system.access.audit` filtered to the
-# MAGIC Meridian catalog, grouped by user, action, and day.
+# MAGIC Daily query counts from `system.access.audit`, filtered to actions
+# MAGIC that reference the Meridian catalog.
 
 # COMMAND ----------
 
 spark.sql(f"""
-    CREATE OR REPLACE VIEW {catalog}.meridian_system.query_activity
-    COMMENT 'Daily query activity against Meridian catalog assets — sourced from system.access.audit'
+    CREATE OR REPLACE TABLE {catalog}.meridian_system.query_activity
+    COMMENT 'Daily query activity against Meridian catalog — snapshot from system.access.audit'
     AS
     SELECT
         event_date,
@@ -50,11 +55,11 @@ spark.sql(f"""
         action_name,
         COUNT(*) AS query_count
     FROM system.access.audit
-    WHERE event_date >= CURRENT_DATE - INTERVAL 90 DAYS
-      AND request_params.catalog_name = '{catalog}'
+    WHERE event_date >= CURRENT_DATE - INTERVAL 30 DAYS
+      AND request_params['catalog_name'] = '{catalog}'
     GROUP BY event_date, user_identity.email, action_name
 """)
-print("View 'query_activity' created")
+print("Table 'query_activity' created")
 
 # COMMAND ----------
 
@@ -62,28 +67,35 @@ print("View 'query_activity' created")
 # MAGIC ---
 # MAGIC ## 2. Table Access Patterns
 # MAGIC
-# MAGIC Which tables are queried most often? Helps Meridian understand
-# MAGIC which data products have the highest demand.
+# MAGIC Extracts table-level access from UC audit events that carry
+# MAGIC `full_name_arg` (e.g. `getTable`, `generateTemporaryTableCredential`).
 
 # COMMAND ----------
 
 spark.sql(f"""
-    CREATE OR REPLACE VIEW {catalog}.meridian_system.table_access_patterns
-    COMMENT 'Table-level access frequency across Meridian schemas — most queried data products'
+    CREATE OR REPLACE TABLE {catalog}.meridian_system.table_access_patterns
+    COMMENT 'Table-level access frequency across Meridian schemas — snapshot from system.access.audit'
     AS
+    WITH parsed AS (
+        SELECT
+            event_date,
+            user_identity.email AS user_email,
+            split(request_params['full_name_arg'], '\\\\.') AS parts
+        FROM system.access.audit
+        WHERE event_date >= CURRENT_DATE - INTERVAL 30 DAYS
+          AND request_params['full_name_arg'] LIKE '{catalog}.meridian\\_%'
+    )
     SELECT
-        request_params.schema_name AS schema_name,
-        request_params.table_name AS table_name,
-        COUNT(DISTINCT user_identity.email) AS unique_users,
+        get(parts, 1) AS schema_name,
+        get(parts, 2) AS table_name,
+        COUNT(DISTINCT user_email) AS unique_users,
         COUNT(*) AS access_count,
         MAX(event_date) AS last_accessed
-    FROM system.access.audit
-    WHERE event_date >= CURRENT_DATE - INTERVAL 90 DAYS
-      AND request_params.catalog_name = '{catalog}'
-      AND request_params.table_name IS NOT NULL
-    GROUP BY request_params.schema_name, request_params.table_name
+    FROM parsed
+    WHERE size(parts) >= 3
+    GROUP BY get(parts, 1), get(parts, 2)
 """)
-print("View 'table_access_patterns' created")
+print("Table 'table_access_patterns' created")
 
 # COMMAND ----------
 
@@ -91,14 +103,13 @@ print("View 'table_access_patterns' created")
 # MAGIC ---
 # MAGIC ## 3. Compute Consumption
 # MAGIC
-# MAGIC DBU consumption from `system.billing.usage` grouped by SKU and day.
-# MAGIC Shows the cost profile of running the Meridian platform.
+# MAGIC DBU consumption from `system.billing.usage`, grouped by SKU and day.
 
 # COMMAND ----------
 
 spark.sql(f"""
-    CREATE OR REPLACE VIEW {catalog}.meridian_system.compute_consumption
-    COMMENT 'Daily compute consumption (DBUs) by SKU — cost profile for the Meridian platform'
+    CREATE OR REPLACE TABLE {catalog}.meridian_system.compute_consumption
+    COMMENT 'Daily compute consumption (DBUs) by SKU — snapshot from system.billing.usage'
     AS
     SELECT
         usage_date,
@@ -106,19 +117,16 @@ spark.sql(f"""
         usage_unit,
         SUM(usage_quantity) AS total_dbus
     FROM system.billing.usage
-    WHERE usage_date >= CURRENT_DATE - INTERVAL 90 DAYS
+    WHERE usage_date >= CURRENT_DATE - INTERVAL 30 DAYS
     GROUP BY usage_date, sku_name, usage_unit
 """)
-print("View 'compute_consumption' created")
+print("Table 'compute_consumption' created")
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC ---
 # MAGIC ## 4. Grant Access to App Service Principal
-# MAGIC
-# MAGIC The Meridian Portal app SP needs `USE SCHEMA` and `SELECT` on
-# MAGIC `meridian_system` to serve the Platform Analytics tab.
 
 # COMMAND ----------
 
@@ -136,10 +144,6 @@ print(f"Grants applied for SP {sp_client_id} on meridian_system")
 
 # COMMAND ----------
 
-display(spark.sql(f"""
-    SELECT table_name, table_type, comment
-    FROM {catalog}.information_schema.tables
-    WHERE table_schema = 'meridian_system'
-      AND table_type IN ('VIEW', 'MATERIALIZED_VIEW')
-    ORDER BY table_name
-"""))
+for tbl in ["query_activity", "table_access_patterns", "compute_consumption"]:
+    cnt = spark.sql(f"SELECT COUNT(*) AS n FROM {catalog}.meridian_system.{tbl}").collect()[0]["n"]
+    print(f"  {tbl}: {cnt} rows")
