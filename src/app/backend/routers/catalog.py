@@ -123,25 +123,25 @@ def get_regulatory_feed(
         SELECT
             ra.action_id,
             ra.action_date,
-            ra.source,
+            ra.action_source AS source,
             ra.action_type,
-            ra.title,
-            ra.description,
+            ra.action_type AS title,
+            ra.action_description AS description,
             ra.company_name,
-            ra.filing_url,
+            CAST(NULL AS STRING) AS filing_url,
             ce.entity_id,
-            ce.industry,
-            ce.cik_number,
-            ce.jurisdiction,
-            crs.overall_risk_level,
-            crs.risk_signal_count,
-            crs.latest_signal_date
+            CAST(NULL AS STRING) AS industry,
+            ra.source_reference_id AS cik_number,
+            ce.primary_state AS jurisdiction,
+            crs.risk_tier AS overall_risk_level,
+            crs.total_actions AS risk_signal_count,
+            crs.latest_action_date AS latest_signal_date
         FROM {_catalog}.meridian_regulatory.regulatory_actions ra
         LEFT JOIN {_catalog}.meridian_regulatory.company_entities ce
             ON ra.company_name = ce.company_name
         LEFT JOIN {_catalog}.meridian_regulatory.company_risk_signals crs
             ON ce.company_name = crs.company_name
-        WHERE ra.source IN ({source_list})
+        WHERE ra.action_source IN ({source_list})
         ORDER BY ra.action_date DESC
         LIMIT {int(limit)}
     """
@@ -168,11 +168,11 @@ def get_feed_summary(subscription_tier: str = Query("sec_only")):
         SELECT
             COUNT(DISTINCT ra.action_id) AS total_actions,
             COUNT(DISTINCT ra.company_name) AS total_entities,
-            COALESCE(SUM(crs.risk_signal_count), 0) AS total_risk_signals
+            COALESCE(SUM(crs.total_actions), 0) AS total_risk_signals
         FROM {_catalog}.meridian_regulatory.regulatory_actions ra
         LEFT JOIN {_catalog}.meridian_regulatory.company_risk_signals crs
             ON ra.company_name = crs.company_name
-        WHERE ra.source IN ({source_list})
+        WHERE ra.action_source IN ({source_list})
             AND ra.action_date >= CURRENT_DATE - INTERVAL 90 DAYS
     """)
 
