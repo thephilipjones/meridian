@@ -1,0 +1,358 @@
+{
+  "datasets": [
+    {
+      "name": "query_data",
+      "displayName": "Query Activity",
+      "query": "SELECT event_date, user_email, action_name, query_count FROM serverless_stable_k2zkdm_catalog.meridian_system.query_activity ORDER BY event_date DESC"
+    },
+    {
+      "name": "table_access_data",
+      "displayName": "Table Access Patterns",
+      "query": "SELECT schema_name, table_name, unique_users, access_count, last_accessed FROM serverless_stable_k2zkdm_catalog.meridian_system.table_access_patterns ORDER BY access_count DESC"
+    },
+    {
+      "name": "compute_data",
+      "displayName": "Compute Consumption",
+      "query": "SELECT usage_date, sku_name, CAST(total_dbus AS DOUBLE) as total_dbus FROM serverless_stable_k2zkdm_catalog.meridian_system.compute_consumption ORDER BY usage_date"
+    },
+    {
+      "name": "freshness_data",
+      "displayName": "Data Freshness",
+      "query": "SELECT table_schema as schema_name, table_name, last_altered, ROUND(TIMESTAMPDIFF(HOUR, last_altered, current_timestamp()), 1) as hours_since_refresh, CASE WHEN TIMESTAMPDIFF(HOUR, last_altered, current_timestamp()) < 24 THEN 'On Track' WHEN TIMESTAMPDIFF(HOUR, last_altered, current_timestamp()) < 48 THEN 'At Risk' ELSE 'Breached' END as sla_status FROM serverless_stable_k2zkdm_catalog.information_schema.tables WHERE table_schema IN ('meridian_internal', 'meridian_research', 'meridian_regulatory') AND table_type IN ('TABLE', 'MATERIALIZED_VIEW') AND table_name NOT LIKE 'quarantine%' AND table_name NOT LIKE 'raw_%' AND table_name NOT LIKE 'cleaned_%' AND table_name NOT LIKE '%_temp' AND table_name NOT LIKE '%_vs_%' ORDER BY hours_since_refresh DESC"
+    }
+  ],
+  "pages": [
+    {
+      "name": "platform-health",
+      "displayName": "Platform Health",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "platform-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Platform Health"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "platform-subtitle",
+            "multilineTextboxSpec": {
+              "lines": ["Meridian platform usage, query activity, and compute consumption"]
+            }
+          },
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "kpi-total-queries",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "query_data",
+                "fields": [{"name": "sum(query_count)", "expression": "SUM(`query_count`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(query_count)", "displayName": "Total Queries"}
+              },
+              "frame": {"showTitle": true, "title": "Total Queries (30d)"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-unique-users",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "query_data",
+                "fields": [{"name": "countdistinct(user_email)", "expression": "COUNT(DISTINCT `user_email`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "countdistinct(user_email)", "displayName": "Unique Users"}
+              },
+              "frame": {"showTitle": true, "title": "Unique Users"}
+            }
+          },
+          "position": {"x": 2, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-total-dbus",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "compute_data",
+                "fields": [{"name": "sum(total_dbus)", "expression": "SUM(`total_dbus`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(total_dbus)", "displayName": "Total DBUs"}
+              },
+              "frame": {"showTitle": true, "title": "Total DBUs Consumed"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "daily-queries-chart",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "query_data",
+                "fields": [
+                  {"name": "daily(event_date)", "expression": "DATE_TRUNC(\"DAY\", `event_date`)"},
+                  {"name": "sum(query_count)", "expression": "SUM(`query_count`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {"fieldName": "daily(event_date)", "scale": {"type": "temporal"}, "displayName": "Date"},
+                "y": {"fieldName": "sum(query_count)", "scale": {"type": "quantitative"}, "displayName": "Queries"}
+              },
+              "frame": {"showTitle": true, "title": "Daily Query Activity"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 3, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "top-tables-bar",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "table_access_data",
+                "fields": [
+                  {"name": "table_name", "expression": "`table_name`"},
+                  {"name": "access_count", "expression": "`access_count`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "access_count", "scale": {"type": "quantitative"}, "displayName": "Accesses"},
+                "y": {"fieldName": "table_name", "scale": {"type": "categorical"}, "displayName": "Table"}
+              },
+              "frame": {"showTitle": true, "title": "Top Accessed Tables"}
+            }
+          },
+          "position": {"x": 3, "y": 5, "width": 3, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "table-access-detail",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "table_access_data",
+                "fields": [
+                  {"name": "schema_name", "expression": "`schema_name`"},
+                  {"name": "table_name", "expression": "`table_name`"},
+                  {"name": "unique_users", "expression": "`unique_users`"},
+                  {"name": "access_count", "expression": "`access_count`"},
+                  {"name": "last_accessed", "expression": "`last_accessed`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "schema_name", "displayName": "Schema"},
+                  {"fieldName": "table_name", "displayName": "Table"},
+                  {"fieldName": "unique_users", "displayName": "Users"},
+                  {"fieldName": "access_count", "displayName": "Accesses"},
+                  {"fieldName": "last_accessed", "displayName": "Last Accessed"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Table Access Patterns"}
+            }
+          },
+          "position": {"x": 0, "y": 10, "width": 6, "height": 6}
+        }
+      ]
+    },
+    {
+      "name": "data-freshness",
+      "displayName": "Data Freshness & SLA",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "freshness-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Data Freshness & SLA Compliance"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "freshness-subtitle",
+            "multilineTextboxSpec": {
+              "lines": ["For a data product company, freshness IS the SLA. Are we delivering on our promises to customers?"]
+            }
+          },
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "kpi-gold-tables",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "freshness_data",
+                "fields": [{"name": "count(table_name)", "expression": "COUNT(`table_name`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "count(table_name)", "displayName": "Gold Tables"}
+              },
+              "frame": {"showTitle": true, "title": "Gold Tables Tracked"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-on-track",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "freshness_data",
+                "fields": [
+                  {"name": "sla_status", "expression": "`sla_status`"},
+                  {"name": "count(table_name)", "expression": "COUNT(`table_name`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {"fieldName": "count(table_name)", "scale": {"type": "quantitative"}, "displayName": "Tables"},
+                "color": {"fieldName": "sla_status", "scale": {"type": "categorical"}, "displayName": "SLA Status"}
+              },
+              "frame": {"showTitle": true, "title": "SLA Status Distribution"}
+            }
+          },
+          "position": {"x": 2, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-avg-freshness",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "freshness_data",
+                "fields": [{"name": "avg(hours_since_refresh)", "expression": "AVG(`hours_since_refresh`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(hours_since_refresh)", "displayName": "Avg Hours Since Refresh"}
+              },
+              "frame": {"showTitle": true, "title": "Avg Hours Since Refresh"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "freshness-bar",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "freshness_data",
+                "fields": [
+                  {"name": "table_name", "expression": "`table_name`"},
+                  {"name": "hours_since_refresh", "expression": "`hours_since_refresh`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "hours_since_refresh", "scale": {"type": "quantitative"}, "displayName": "Hours Since Refresh"},
+                "y": {"fieldName": "table_name", "scale": {"type": "categorical"}, "displayName": "Table"}
+              },
+              "frame": {"showTitle": true, "title": "Hours Since Last Refresh by Table"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 6, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "freshness-table",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "freshness_data",
+                "fields": [
+                  {"name": "schema_name", "expression": "`schema_name`"},
+                  {"name": "table_name", "expression": "`table_name`"},
+                  {"name": "last_altered", "expression": "`last_altered`"},
+                  {"name": "hours_since_refresh", "expression": "`hours_since_refresh`"},
+                  {"name": "sla_status", "expression": "`sla_status`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "schema_name", "displayName": "Schema"},
+                  {"fieldName": "table_name", "displayName": "Table"},
+                  {"fieldName": "last_altered", "displayName": "Last Refreshed"},
+                  {"fieldName": "hours_since_refresh", "displayName": "Hours Stale"},
+                  {"fieldName": "sla_status", "displayName": "SLA Status"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Data Freshness Scorecard"}
+            }
+          },
+          "position": {"x": 0, "y": 11, "width": 6, "height": 6}
+        }
+      ]
+    }
+  ]
+}

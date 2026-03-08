@@ -180,6 +180,200 @@ print("customer_health_metrics created")
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Publication Metrics
+# MAGIC
+# MAGIC Research publication KPIs consumed by Dr. Anika Park's Research
+# MAGIC Intelligence dashboard and the Research Assistant Genie space.
+# MAGIC Tracks article volume, citation impact, and source distribution.
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE VIEW {catalog}.meridian_research.publication_metrics
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Meridian research publication KPIs — article volume and citation impact"
+  source: {catalog}.meridian_research.articles
+
+  dimensions:
+    - name: Publication Year
+      expr: publication_year
+      comment: "Year of publication"
+    - name: Journal
+      expr: journal
+      comment: "Journal or venue name"
+    - name: Source
+      expr: source
+      comment: "Data source: PubMed, arXiv, Crossref"
+    - name: Is Preprint
+      expr: is_preprint
+      comment: "Whether the article is a preprint (true/false)"
+    - name: Publication Type
+      expr: publication_type
+      comment: "Type of publication (research-article, review, etc.)"
+
+  measures:
+    - name: Article Count
+      expr: COUNT(1)
+      comment: "Total number of articles"
+    - name: Avg Citation Count
+      expr: AVG(citation_count)
+      comment: "Average citations per article"
+    - name: Total Citations
+      expr: SUM(citation_count)
+      comment: "Sum of all citations across articles"
+$$
+""")
+
+print("publication_metrics created")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Author Metrics
+# MAGIC
+# MAGIC Research author productivity and impact KPIs — h-index
+# MAGIC distribution, publication volume, and career span analytics.
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE VIEW {catalog}.meridian_research.author_metrics
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Meridian research author KPIs — productivity and impact"
+  source: {catalog}.meridian_research.authors
+
+  dimensions:
+    - name: First Pub Year
+      expr: first_pub_year
+      comment: "Year of first publication"
+    - name: Last Pub Year
+      expr: last_pub_year
+      comment: "Year of most recent publication"
+
+  measures:
+    - name: Author Count
+      expr: COUNT(1)
+      comment: "Total number of authors"
+    - name: Avg H-Index
+      expr: AVG(h_index)
+      comment: "Average h-index across authors"
+    - name: Avg Article Count
+      expr: AVG(article_count)
+      comment: "Average articles per author"
+    - name: Max H-Index
+      expr: MAX(h_index)
+      comment: "Highest h-index in the dataset"
+$$
+""")
+
+print("author_metrics created")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Regulatory Action Metrics
+# MAGIC
+# MAGIC Regulatory action KPIs for James Rivera's Regulatory Landscape
+# MAGIC dashboard — tracks action volume, source distribution, and
+# MAGIC subscription-tier scoping for data product governance demos.
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE VIEW {catalog}.meridian_regulatory.regulatory_action_metrics
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Meridian regulatory action KPIs — enforcement and filing analytics"
+  source: {catalog}.meridian_regulatory.regulatory_actions
+
+  dimensions:
+    - name: Action Source
+      expr: action_source
+      comment: "Regulatory body: SEC, FDA, etc."
+    - name: Action Type
+      expr: action_type
+      comment: "Type of regulatory action"
+    - name: Action Year
+      expr: action_year
+      comment: "Year the action was taken"
+    - name: Classification
+      expr: classification
+      comment: "Severity or risk classification"
+    - name: Subscription Tier
+      expr: subscription_tier
+      comment: "Data access tier: basic, standard, premium"
+
+  measures:
+    - name: Action Count
+      expr: COUNT(1)
+      comment: "Total regulatory actions"
+    - name: Distinct Companies
+      expr: COUNT(DISTINCT company_name)
+      comment: "Number of unique companies with actions"
+$$
+""")
+
+print("regulatory_action_metrics created")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Company Risk Metrics
+# MAGIC
+# MAGIC Company-level risk scoring KPIs — risk tier distribution,
+# MAGIC filing counts, and composite internal risk scores.
+
+# COMMAND ----------
+
+spark.sql(f"""
+CREATE OR REPLACE VIEW {catalog}.meridian_regulatory.company_risk_metrics
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Meridian company risk KPIs — risk tiers and filing analytics"
+  source: {catalog}.meridian_regulatory.company_risk_signals
+
+  dimensions:
+    - name: Risk Tier
+      expr: risk_tier
+      comment: "Risk classification: High, Medium, Low"
+    - name: Primary State
+      expr: primary_state
+      comment: "Primary US state of the company"
+
+  measures:
+    - name: Company Count
+      expr: COUNT(1)
+      comment: "Number of companies"
+    - name: Avg Internal Score
+      expr: AVG(internal_score)
+      comment: "Average composite risk score"
+    - name: Total Actions
+      expr: SUM(total_actions)
+      comment: "Sum of all regulatory actions across companies"
+    - name: Total SEC Filings
+      expr: SUM(sec_filings)
+      comment: "Sum of SEC filings across companies"
+    - name: Total FDA Actions
+      expr: SUM(fda_actions)
+      comment: "Sum of FDA enforcement actions across companies"
+$$
+""")
+
+print("company_risk_metrics created")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Verify Metric Views
 
 # COMMAND ----------
@@ -230,13 +424,17 @@ display(spark.sql(f"""
 # MAGIC %md
 # MAGIC ## Summary
 # MAGIC
-# MAGIC Three metric views created in `meridian.internal`:
+# MAGIC Seven metric views created across three schemas:
 # MAGIC
-# MAGIC | Metric View | Measures | Consumed By |
-# MAGIC |---|---|---|
-# MAGIC | `revenue_metrics` | Total Revenue, Gross Margin %, Revenue per Customer | AI/BI Dashboard, Internal Genie |
-# MAGIC | `pipeline_metrics` | Deal Count, Pipeline Value, ARR, Avg Deal Size | AI/BI Dashboard, Internal Genie |
-# MAGIC | `customer_health_metrics` | Account Count, Total ARR, Avg Health Score | AI/BI Dashboard, Internal Genie |
+# MAGIC | Metric View | Schema | Measures | Consumed By |
+# MAGIC |---|---|---|---|
+# MAGIC | `revenue_metrics` | `meridian_internal` | Total Revenue, Gross Margin %, Revenue per Customer | Internal Dashboard, Internal Genie |
+# MAGIC | `pipeline_metrics` | `meridian_internal` | Deal Count, Pipeline Value, ARR, Avg Deal Size | Internal Dashboard, Internal Genie |
+# MAGIC | `customer_health_metrics` | `meridian_internal` | Account Count, Total ARR, Avg Health Score | Internal Dashboard, Internal Genie |
+# MAGIC | `publication_metrics` | `meridian_research` | Article Count, Avg Citations, Total Citations | Research Dashboard, Research Genie |
+# MAGIC | `author_metrics` | `meridian_research` | Author Count, Avg H-Index, Avg Article Count | Research Dashboard, Research Genie |
+# MAGIC | `regulatory_action_metrics` | `meridian_regulatory` | Action Count, Distinct Companies | Regulatory Dashboard, Regulatory Genie |
+# MAGIC | `company_risk_metrics` | `meridian_regulatory` | Company Count, Avg Internal Score, Total Actions | Regulatory Dashboard, Regulatory Genie |
 # MAGIC
 # MAGIC These metric views ensure that Genie, AI/BI Dashboards, and SQL queries
 # MAGIC all use the same metric definitions — no inconsistency across tools.

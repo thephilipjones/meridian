@@ -1,0 +1,539 @@
+{
+  "datasets": [
+    {
+      "name": "articles_data",
+      "displayName": "Articles Data",
+      "query": "SELECT publication_year, journal, source, is_preprint, publication_type, COUNT(*) as article_count, AVG(citation_count) as avg_citations, SUM(citation_count) as total_citations FROM serverless_stable_k2zkdm_catalog.meridian_research.articles GROUP BY publication_year, journal, source, is_preprint, publication_type ORDER BY publication_year, article_count DESC"
+    },
+    {
+      "name": "authors_data",
+      "displayName": "Authors Data",
+      "query": "SELECT full_name, h_index, article_count, first_pub_year, last_pub_year, last_pub_year - first_pub_year as career_span FROM serverless_stable_k2zkdm_catalog.meridian_research.authors ORDER BY h_index DESC"
+    },
+    {
+      "name": "mesh_data",
+      "displayName": "MeSH Terms",
+      "query": "SELECT mesh_term, article_count FROM serverless_stable_k2zkdm_catalog.meridian_research.mesh_terms ORDER BY article_count DESC LIMIT 15"
+    },
+    {
+      "name": "entity_data",
+      "displayName": "Extracted Entities",
+      "query": "SELECT entity_type, entity_value, COUNT(*) as article_count, AVG(confidence) as avg_confidence FROM serverless_stable_k2zkdm_catalog.meridian_research.article_entities GROUP BY entity_type, entity_value ORDER BY article_count DESC LIMIT 20"
+    },
+    {
+      "name": "top_journals",
+      "displayName": "Top Journals",
+      "query": "SELECT journal, COUNT(*) as article_count FROM serverless_stable_k2zkdm_catalog.meridian_research.articles GROUP BY journal ORDER BY article_count DESC LIMIT 10"
+    }
+  ],
+  "pages": [
+    {
+      "name": "publication-landscape",
+      "displayName": "Publication Landscape",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "pub-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Publication Landscape"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "pub-subtitle",
+            "multilineTextboxSpec": {
+              "lines": ["Dr. Anika Park's view of Meridian's biomedical research corpus"]
+            }
+          },
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "kpi-total-articles",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "articles_data",
+                "fields": [{"name": "sum(article_count)", "expression": "SUM(`article_count`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(article_count)", "displayName": "Total Articles"}
+              },
+              "frame": {"showTitle": true, "title": "Total Articles"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-total-authors",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "authors_data",
+                "fields": [{"name": "count(full_name)", "expression": "COUNT(`full_name`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "count(full_name)", "displayName": "Total Authors"}
+              },
+              "frame": {"showTitle": true, "title": "Total Authors"}
+            }
+          },
+          "position": {"x": 2, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-avg-citations",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "articles_data",
+                "fields": [{"name": "avg(avg_citations)", "expression": "AVG(`avg_citations`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(avg_citations)", "displayName": "Avg Citations / Article"}
+              },
+              "frame": {"showTitle": true, "title": "Avg Citations per Article"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "pubs-by-year",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "articles_data",
+                "fields": [
+                  {"name": "publication_year", "expression": "`publication_year`"},
+                  {"name": "sum(article_count)", "expression": "SUM(`article_count`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "publication_year", "scale": {"type": "categorical"}, "displayName": "Year"},
+                "y": {"fieldName": "sum(article_count)", "scale": {"type": "quantitative"}, "displayName": "Articles"}
+              },
+              "frame": {"showTitle": true, "title": "Publications by Year"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 3, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "top-journals-bar",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "top_journals",
+                "fields": [
+                  {"name": "journal", "expression": "`journal`"},
+                  {"name": "article_count", "expression": "`article_count`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "article_count", "scale": {"type": "quantitative"}, "displayName": "Articles"},
+                "y": {"fieldName": "journal", "scale": {"type": "categorical"}, "displayName": "Journal"}
+              },
+              "frame": {"showTitle": true, "title": "Top 10 Journals by Article Count"}
+            }
+          },
+          "position": {"x": 3, "y": 5, "width": 3, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "preprint-pie",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "articles_data",
+                "fields": [
+                  {"name": "is_preprint", "expression": "`is_preprint`"},
+                  {"name": "sum(article_count)", "expression": "SUM(`article_count`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {"fieldName": "sum(article_count)", "scale": {"type": "quantitative"}, "displayName": "Articles"},
+                "color": {"fieldName": "is_preprint", "scale": {"type": "categorical"}, "displayName": "Is Preprint"}
+              },
+              "frame": {"showTitle": true, "title": "Preprint vs Peer-Reviewed"}
+            }
+          },
+          "position": {"x": 0, "y": 10, "width": 6, "height": 5}
+        }
+      ]
+    },
+    {
+      "name": "topic-entity-analysis",
+      "displayName": "Topic & Entity Analysis",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "topic-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Topic & Entity Analysis"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "topic-subtitle",
+            "multilineTextboxSpec": {
+              "lines": ["Research topics by MeSH term frequency and NLP-extracted biomedical entities"]
+            }
+          },
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "mesh-terms-bar",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "mesh_data",
+                "fields": [
+                  {"name": "mesh_term", "expression": "`mesh_term`"},
+                  {"name": "article_count", "expression": "`article_count`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "article_count", "scale": {"type": "quantitative"}, "displayName": "Articles"},
+                "y": {"fieldName": "mesh_term", "scale": {"type": "categorical"}, "displayName": "MeSH Term"}
+              },
+              "frame": {"showTitle": true, "title": "Top 15 MeSH Terms by Article Count"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 6, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "entity-header",
+            "multilineTextboxSpec": {
+              "lines": ["### Extracted Biomedical Entities (via ai_query NLP)"]
+            }
+          },
+          "position": {"x": 0, "y": 8, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "entity-by-type",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "entity_data",
+                "fields": [
+                  {"name": "entity_type", "expression": "`entity_type`"},
+                  {"name": "sum(article_count)", "expression": "SUM(`article_count`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "entity_type", "scale": {"type": "categorical"}, "displayName": "Entity Type"},
+                "y": {"fieldName": "sum(article_count)", "scale": {"type": "quantitative"}, "displayName": "Mentions"}
+              },
+              "frame": {"showTitle": true, "title": "Top Entities by Type (drug / gene / disease)"}
+            }
+          },
+          "position": {"x": 0, "y": 9, "width": 3, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "entity-detail-table",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "entity_data",
+                "fields": [
+                  {"name": "entity_value", "expression": "`entity_value`"},
+                  {"name": "entity_type", "expression": "`entity_type`"},
+                  {"name": "article_count", "expression": "`article_count`"},
+                  {"name": "avg_confidence", "expression": "`avg_confidence`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "entity_value", "displayName": "Entity"},
+                  {"fieldName": "entity_type", "displayName": "Type"},
+                  {"fieldName": "article_count", "displayName": "Articles"},
+                  {"fieldName": "avg_confidence", "displayName": "Avg Confidence"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Entity Detail"}
+            }
+          },
+          "position": {"x": 3, "y": 9, "width": 3, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "topic-genie-handoff",
+            "multilineTextboxSpec": {
+              "lines": ["**Dive deeper with Genie:** *'What are the most-cited papers on CRISPR?'* / *'Which authors publish most frequently on spatial transcriptomics?'*"]
+            }
+          },
+          "position": {"x": 0, "y": 14, "width": 6, "height": 1}
+        }
+      ]
+    },
+    {
+      "name": "author-analytics",
+      "displayName": "Author Analytics",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "author-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Author Analytics"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "author-subtitle",
+            "multilineTextboxSpec": {
+              "lines": ["Researcher productivity and impact metrics"]
+            }
+          },
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "kpi-author-count",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "authors_data",
+                "fields": [{"name": "count(full_name)", "expression": "COUNT(`full_name`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "count(full_name)", "displayName": "Total Authors"}
+              },
+              "frame": {"showTitle": true, "title": "Total Authors"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-avg-hindex",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "authors_data",
+                "fields": [{"name": "avg(h_index)", "expression": "AVG(`h_index`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(h_index)", "displayName": "Avg H-Index"}
+              },
+              "frame": {"showTitle": true, "title": "Avg H-Index"}
+            }
+          },
+          "position": {"x": 2, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-avg-articles",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "authors_data",
+                "fields": [{"name": "avg(article_count)", "expression": "AVG(`article_count`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(article_count)", "displayName": "Avg Articles / Author"}
+              },
+              "frame": {"showTitle": true, "title": "Avg Articles per Author"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "top-authors-hindex",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "authors_data",
+                "fields": [
+                  {"name": "full_name", "expression": "`full_name`"},
+                  {"name": "h_index", "expression": "`h_index`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "h_index", "scale": {"type": "quantitative"}, "displayName": "H-Index"},
+                "y": {"fieldName": "full_name", "scale": {"type": "categorical"}, "displayName": "Author"}
+              },
+              "frame": {"showTitle": true, "title": "Top Authors by H-Index"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 6, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "author-leaderboard",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "authors_data",
+                "fields": [
+                  {"name": "full_name", "expression": "`full_name`"},
+                  {"name": "h_index", "expression": "`h_index`"},
+                  {"name": "article_count", "expression": "`article_count`"},
+                  {"name": "first_pub_year", "expression": "`first_pub_year`"},
+                  {"name": "last_pub_year", "expression": "`last_pub_year`"},
+                  {"name": "career_span", "expression": "`career_span`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "full_name", "displayName": "Author"},
+                  {"fieldName": "h_index", "displayName": "H-Index"},
+                  {"fieldName": "article_count", "displayName": "Articles"},
+                  {"fieldName": "first_pub_year", "displayName": "First Pub"},
+                  {"fieldName": "last_pub_year", "displayName": "Last Pub"},
+                  {"fieldName": "career_span", "displayName": "Career Span (yrs)"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Author Leaderboard"}
+            }
+          },
+          "position": {"x": 0, "y": 11, "width": 6, "height": 6}
+        }
+      ]
+    },
+    {
+      "name": "global-filters",
+      "displayName": "Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layout": [
+        {
+          "widget": {
+            "name": "filter-pub-year",
+            "queries": [{
+              "name": "articles_data_pub_year",
+              "query": {
+                "datasetName": "articles_data",
+                "fields": [{"name": "publication_year", "expression": "`publication_year`"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [{
+                  "fieldName": "publication_year",
+                  "displayName": "Publication Year",
+                  "queryName": "articles_data_pub_year"
+                }]
+              },
+              "frame": {"showTitle": true, "title": "Publication Year"}
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 2, "height": 2}
+        },
+        {
+          "widget": {
+            "name": "filter-source",
+            "queries": [{
+              "name": "articles_data_source",
+              "query": {
+                "datasetName": "articles_data",
+                "fields": [{"name": "source", "expression": "`source`"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [{
+                  "fieldName": "source",
+                  "displayName": "Source",
+                  "queryName": "articles_data_source"
+                }]
+              },
+              "frame": {"showTitle": true, "title": "Source"}
+            }
+          },
+          "position": {"x": 2, "y": 0, "width": 2, "height": 2}
+        }
+      ]
+    }
+  ]
+}

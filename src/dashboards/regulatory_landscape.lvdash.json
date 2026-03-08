@@ -1,0 +1,506 @@
+{
+  "datasets": [
+    {
+      "name": "reg_actions_data",
+      "displayName": "Regulatory Actions (SEC Tier)",
+      "query": "SELECT action_year, action_type, action_source, company_name, COUNT(*) as action_count, COUNT(DISTINCT company_name) as distinct_companies FROM serverless_stable_k2zkdm_catalog.meridian_regulatory.regulatory_actions WHERE subscription_tier = 'sec_only' GROUP BY action_year, action_type, action_source, company_name ORDER BY action_count DESC"
+    },
+    {
+      "name": "company_risk_data",
+      "displayName": "Company Risk Profiles",
+      "query": "SELECT company_name, risk_tier, sec_filings, fda_actions, total_actions, internal_score, latest_action_date, primary_state FROM serverless_stable_k2zkdm_catalog.meridian_regulatory.company_risk_signals ORDER BY total_actions DESC"
+    },
+    {
+      "name": "patent_data",
+      "displayName": "Patent Landscape",
+      "query": "SELECT filing_year, patent_type, assignee, COUNT(*) as patent_count, AVG(grant_lag_days) as avg_grant_lag FROM serverless_stable_k2zkdm_catalog.meridian_regulatory.patent_landscape GROUP BY filing_year, patent_type, assignee ORDER BY patent_count DESC"
+    },
+    {
+      "name": "top_assignees",
+      "displayName": "Top Patent Assignees",
+      "query": "SELECT assignee, COUNT(*) as patent_count FROM serverless_stable_k2zkdm_catalog.meridian_regulatory.patent_landscape GROUP BY assignee ORDER BY patent_count DESC LIMIT 10"
+    }
+  ],
+  "pages": [
+    {
+      "name": "regulatory-overview",
+      "displayName": "Regulatory Overview",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "reg-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Regulatory Overview"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "reg-subscription-banner",
+            "multilineTextboxSpec": {
+              "lines": ["**Acme Bank — SEC Tier** | Showing SEC filings data. **Upgrade to Premium** for FDA enforcement actions, patent monitoring, and cross-agency risk signals."]
+            }
+          },
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "kpi-reg-actions",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "reg_actions_data",
+                "fields": [{"name": "sum(action_count)", "expression": "SUM(`action_count`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(action_count)", "displayName": "SEC Actions"}
+              },
+              "frame": {"showTitle": true, "title": "SEC Actions (Scoped)"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-companies-tracked",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "reg_actions_data",
+                "fields": [{"name": "countdistinct(company_name)", "expression": "COUNT(DISTINCT `company_name`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "countdistinct(company_name)", "displayName": "Companies Tracked"}
+              },
+              "frame": {"showTitle": true, "title": "Companies Tracked"}
+            }
+          },
+          "position": {"x": 2, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-action-types",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "reg_actions_data",
+                "fields": [{"name": "countdistinct(action_type)", "expression": "COUNT(DISTINCT `action_type`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "countdistinct(action_type)", "displayName": "Action Types"}
+              },
+              "frame": {"showTitle": true, "title": "Action Types"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "actions-by-year",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "reg_actions_data",
+                "fields": [
+                  {"name": "action_year", "expression": "`action_year`"},
+                  {"name": "sum(action_count)", "expression": "SUM(`action_count`)"},
+                  {"name": "action_type", "expression": "`action_type`"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "action_year", "scale": {"type": "categorical"}, "displayName": "Year"},
+                "y": {"fieldName": "sum(action_count)", "scale": {"type": "quantitative"}, "displayName": "Actions"},
+                "color": {"fieldName": "action_type", "scale": {"type": "categorical"}, "displayName": "Type"}
+              },
+              "frame": {"showTitle": true, "title": "SEC Actions by Year & Type"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 3, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "actions-by-type",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "reg_actions_data",
+                "fields": [
+                  {"name": "action_type", "expression": "`action_type`"},
+                  {"name": "sum(action_count)", "expression": "SUM(`action_count`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "action_type", "scale": {"type": "categorical"}, "displayName": "Action Type"},
+                "y": {"fieldName": "sum(action_count)", "scale": {"type": "quantitative"}, "displayName": "Count"}
+              },
+              "frame": {"showTitle": true, "title": "Top Action Types by Count"}
+            }
+          },
+          "position": {"x": 3, "y": 5, "width": 3, "height": 6}
+        }
+      ]
+    },
+    {
+      "name": "company-risk",
+      "displayName": "Company Risk Profiles",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "risk-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Company Risk Profiles"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 4, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "filter-risk-tier",
+            "queries": [{
+              "name": "company_risk_data_risk_tier",
+              "query": {
+                "datasetName": "company_risk_data",
+                "fields": [{"name": "risk_tier", "expression": "`risk_tier`"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [{
+                  "fieldName": "risk_tier",
+                  "displayName": "Risk Tier",
+                  "queryName": "company_risk_data_risk_tier"
+                }]
+              },
+              "frame": {"showTitle": true, "title": "Risk Tier"}
+            }
+          },
+          "position": {"x": 4, "y": 0, "width": 2, "height": 2}
+        },
+        {
+          "widget": {
+            "name": "kpi-elevated-risk",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "company_risk_data",
+                "fields": [{"name": "count(company_name)", "expression": "COUNT(`company_name`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "count(company_name)", "displayName": "Companies"}
+              },
+              "frame": {"showTitle": true, "title": "Companies Tracked"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 3, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-avg-risk-score",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "company_risk_data",
+                "fields": [{"name": "avg(internal_score)", "expression": "AVG(`internal_score`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(internal_score)", "displayName": "Avg Risk Score"}
+              },
+              "frame": {"showTitle": true, "title": "Avg Risk Score"}
+            }
+          },
+          "position": {"x": 3, "y": 2, "width": 3, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "companies-by-actions",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "company_risk_data",
+                "fields": [
+                  {"name": "company_name", "expression": "`company_name`"},
+                  {"name": "total_actions", "expression": "`total_actions`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "total_actions", "scale": {"type": "quantitative"}, "displayName": "Total Actions"},
+                "y": {"fieldName": "company_name", "scale": {"type": "categorical"}, "displayName": "Company"}
+              },
+              "frame": {"showTitle": true, "title": "Top Companies by Action Count"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 6, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "risk-scorecard",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "company_risk_data",
+                "fields": [
+                  {"name": "company_name", "expression": "`company_name`"},
+                  {"name": "risk_tier", "expression": "`risk_tier`"},
+                  {"name": "sec_filings", "expression": "`sec_filings`"},
+                  {"name": "internal_score", "expression": "`internal_score`"},
+                  {"name": "latest_action_date", "expression": "`latest_action_date`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "company_name", "displayName": "Company"},
+                  {"fieldName": "risk_tier", "displayName": "Risk Tier"},
+                  {"fieldName": "sec_filings", "displayName": "SEC Filings"},
+                  {"fieldName": "internal_score", "displayName": "Risk Score"},
+                  {"fieldName": "latest_action_date", "displayName": "Latest Action"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Company Risk Scorecard"}
+            }
+          },
+          "position": {"x": 0, "y": 11, "width": 6, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "risk-genie-handoff",
+            "multilineTextboxSpec": {
+              "lines": ["**Ask the Regulatory Genie:** *'Which companies had the most SEC filings this year?'* / *'Show me all actions for Illumina Inc.'*"]
+            }
+          },
+          "position": {"x": 0, "y": 17, "width": 6, "height": 1}
+        }
+      ]
+    },
+    {
+      "name": "patent-landscape",
+      "displayName": "Patent Landscape",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "patent-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Patent Landscape"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "patent-subtitle",
+            "multilineTextboxSpec": {
+              "lines": ["Patent filing trends, assignee analysis, and grant lag metrics"]
+            }
+          },
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "kpi-total-patents",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "patent_data",
+                "fields": [{"name": "sum(patent_count)", "expression": "SUM(`patent_count`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(patent_count)", "displayName": "Total Patents"}
+              },
+              "frame": {"showTitle": true, "title": "Total Patents"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 3, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-avg-grant-lag",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "patent_data",
+                "fields": [{"name": "avg(avg_grant_lag)", "expression": "AVG(`avg_grant_lag`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(avg_grant_lag)", "displayName": "Avg Grant Lag (days)"}
+              },
+              "frame": {"showTitle": true, "title": "Avg Grant Lag (days)"}
+            }
+          },
+          "position": {"x": 3, "y": 2, "width": 3, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "patents-by-year",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "patent_data",
+                "fields": [
+                  {"name": "filing_year", "expression": "`filing_year`"},
+                  {"name": "sum(patent_count)", "expression": "SUM(`patent_count`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "filing_year", "scale": {"type": "categorical"}, "displayName": "Year"},
+                "y": {"fieldName": "sum(patent_count)", "scale": {"type": "quantitative"}, "displayName": "Patents Filed"}
+              },
+              "frame": {"showTitle": true, "title": "Patents Filed by Year"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 3, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "top-assignees-bar",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "top_assignees",
+                "fields": [
+                  {"name": "assignee", "expression": "`assignee`"},
+                  {"name": "patent_count", "expression": "`patent_count`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "patent_count", "scale": {"type": "quantitative"}, "displayName": "Patents"},
+                "y": {"fieldName": "assignee", "scale": {"type": "categorical"}, "displayName": "Assignee"}
+              },
+              "frame": {"showTitle": true, "title": "Top 10 Assignees by Patent Count"}
+            }
+          },
+          "position": {"x": 3, "y": 5, "width": 3, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "patent-type-pie",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "patent_data",
+                "fields": [
+                  {"name": "patent_type", "expression": "`patent_type`"},
+                  {"name": "sum(patent_count)", "expression": "SUM(`patent_count`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {"fieldName": "sum(patent_count)", "scale": {"type": "quantitative"}, "displayName": "Patents"},
+                "color": {"fieldName": "patent_type", "scale": {"type": "categorical"}, "displayName": "Type"}
+              },
+              "frame": {"showTitle": true, "title": "Patent Type Distribution"}
+            }
+          },
+          "position": {"x": 0, "y": 10, "width": 6, "height": 5}
+        }
+      ]
+    },
+    {
+      "name": "global-filters",
+      "displayName": "Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layout": [
+        {
+          "widget": {
+            "name": "filter-action-year",
+            "queries": [{
+              "name": "reg_actions_data_action_year",
+              "query": {
+                "datasetName": "reg_actions_data",
+                "fields": [{"name": "action_year", "expression": "`action_year`"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [{
+                  "fieldName": "action_year",
+                  "displayName": "Action Year",
+                  "queryName": "reg_actions_data_action_year"
+                }]
+              },
+              "frame": {"showTitle": true, "title": "Action Year"}
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 2, "height": 2}
+        }
+      ]
+    }
+  ]
+}

@@ -1,187 +1,985 @@
 {
+  "datasets": [
+    {
+      "name": "revenue_data",
+      "displayName": "Revenue Data",
+      "query": "SELECT fiscal_quarter, product_line, SUM(revenue) as revenue, SUM(cost_of_data) as cost_of_data, SUM(gross_margin) as gross_margin, SUM(customer_count) as customer_count FROM serverless_stable_k2zkdm_catalog.meridian_internal.revenue_summary GROUP BY fiscal_quarter, product_line ORDER BY fiscal_quarter, revenue DESC"
+    },
+    {
+      "name": "health_data",
+      "displayName": "Customer Health",
+      "query": "SELECT account_name, arr, products_subscribed, api_calls_30d, avg_response_ms_30d, error_rate_30d, health_score, health_tier FROM serverless_stable_k2zkdm_catalog.meridian_internal.customer_health ORDER BY health_score ASC"
+    },
+    {
+      "name": "pipeline_data",
+      "displayName": "Pipeline Data",
+      "query": "SELECT stage, product_line, region, fiscal_quarter, deal_count, total_amount, total_arr, avg_deal_size, conversion_rate FROM serverless_stable_k2zkdm_catalog.meridian_internal.sales_pipeline ORDER BY total_amount DESC"
+    },
+    {
+      "name": "usage_data",
+      "displayName": "Product Usage",
+      "query": "SELECT account_name, product as product_line, api_calls, unique_users, avg_response_ms, error_rate, bytes_served FROM serverless_stable_k2zkdm_catalog.meridian_internal.product_usage ORDER BY api_calls DESC"
+    },
+    {
+      "name": "account_scorecard",
+      "displayName": "Account Monetization",
+      "query": "SELECT h.account_name, h.arr, COALESCE(u.total_api_calls, 0) as api_calls_30d, CASE WHEN COALESCE(u.total_api_calls, 0) > 0 THEN ROUND(h.arr / u.total_api_calls, 2) ELSE 0 END as revenue_per_call, h.health_tier, CASE WHEN COALESCE(u.total_api_calls, 0) < 50 THEN 'Low' WHEN COALESCE(u.total_api_calls, 0) < 150 THEN 'Medium' ELSE 'High' END as usage_level FROM serverless_stable_k2zkdm_catalog.meridian_internal.customer_health h LEFT JOIN (SELECT account_name, SUM(api_calls) as total_api_calls FROM serverless_stable_k2zkdm_catalog.meridian_internal.product_usage GROUP BY account_name) u ON h.account_name = u.account_name ORDER BY h.arr DESC"
+    },
+    {
+      "name": "ai_insight_data",
+      "displayName": "AI Executive Insight",
+      "query": "SELECT ai_query('databricks-meta-llama-3-1-8b-instruct', CONCAT('Summarize these business metrics in one executive sentence highlighting the most important trend and any risk: ', 'Total revenue: $', CAST(total_rev AS STRING), ', Total customers: ', CAST(total_cust AS STRING), ', At-risk accounts: ', CAST(at_risk AS STRING), ', Critical accounts: ', CAST(critical AS STRING), ', Top product by revenue: ', top_product)) as ai_insight FROM (SELECT (SELECT ROUND(SUM(revenue), 0) FROM serverless_stable_k2zkdm_catalog.meridian_internal.revenue_summary) as total_rev, (SELECT SUM(customer_count) FROM serverless_stable_k2zkdm_catalog.meridian_internal.revenue_summary) as total_cust, (SELECT COUNT(*) FROM serverless_stable_k2zkdm_catalog.meridian_internal.customer_health WHERE health_tier = 'At Risk') as at_risk, (SELECT COUNT(*) FROM serverless_stable_k2zkdm_catalog.meridian_internal.customer_health WHERE health_tier = 'Critical') as critical, (SELECT product_line FROM serverless_stable_k2zkdm_catalog.meridian_internal.revenue_summary GROUP BY product_line ORDER BY SUM(revenue) DESC LIMIT 1) as top_product)"
+    }
+  ],
   "pages": [
     {
-      "name": "revenue-overview",
-      "displayName": "Revenue Overview",
+      "name": "executive-summary",
+      "displayName": "Cross-BU Executive Summary",
+      "pageType": "PAGE_TYPE_CANVAS",
       "layout": [
         {
           "widget": {
-            "name": "total_revenue_kpi",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "revenue_by_quarter",
-                  "disaggregated": false,
-                  "fields": [
-                    { "name": "total_revenue", "expression": "`total_revenue`" }
-                  ]
-                }
-              }
-            ],
-            "spec": {
-              "version": 3,
-              "widgetType": "counter",
-              "encodings": {
-                "value": { "fieldName": "total_revenue", "displayName": "Total Revenue" }
-              }
+            "name": "exec-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Cross-BU Executive Summary"]
             }
           },
-          "position": { "x": 0, "y": 0, "width": 2, "height": 2 }
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
         },
         {
           "widget": {
-            "name": "margin_kpi",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "revenue_by_quarter",
-                  "disaggregated": false,
-                  "fields": [
-                    { "name": "margin_pct", "expression": "`margin_pct`" }
-                  ]
-                }
-              }
-            ],
-            "spec": {
-              "version": 3,
-              "widgetType": "counter",
-              "encodings": {
-                "value": { "fieldName": "margin_pct", "displayName": "Gross Margin %" }
-              }
+            "name": "exec-subtitle",
+            "multilineTextboxSpec": {
+              "lines": ["Sarah's morning view across all of Meridian's business units"]
             }
           },
-          "position": { "x": 2, "y": 0, "width": 2, "height": 2 }
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
         },
         {
           "widget": {
-            "name": "customer_count_kpi",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "revenue_by_quarter",
-                  "disaggregated": false,
-                  "fields": [
-                    { "name": "customer_count", "expression": "`customer_count`" }
-                  ]
-                }
+            "name": "kpi-total-revenue",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "revenue_data",
+                "fields": [{"name": "sum(revenue)", "expression": "SUM(`revenue`)"}],
+                "disaggregated": false
               }
-            ],
+            }],
             "spec": {
-              "version": 3,
+              "version": 2,
               "widgetType": "counter",
               "encodings": {
-                "value": { "fieldName": "customer_count", "displayName": "Customers" }
-              }
+                "value": {"fieldName": "sum(revenue)", "displayName": "Total Revenue"}
+              },
+              "frame": {"showTitle": true, "title": "Total Revenue"}
             }
           },
-          "position": { "x": 4, "y": 0, "width": 2, "height": 2 }
+          "position": {"x": 0, "y": 2, "width": 2, "height": 3}
         },
         {
           "widget": {
-            "name": "revenue_trend",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "revenue_by_quarter",
-                  "disaggregated": true,
-                  "fields": [
-                    { "name": "quarter_label", "expression": "`quarter_label`" },
-                    { "name": "total_revenue", "expression": "`total_revenue`" },
-                    { "name": "product_line", "expression": "`product_line`" }
-                  ]
-                }
+            "name": "kpi-total-customers",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "revenue_data",
+                "fields": [{"name": "sum(customer_count)", "expression": "SUM(`customer_count`)"}],
+                "disaggregated": false
               }
-            ],
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(customer_count)", "displayName": "Total Customers"}
+              },
+              "frame": {"showTitle": true, "title": "Total Customers Served"}
+            }
+          },
+          "position": {"x": 2, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-at-risk-accounts",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "health_data",
+                "fields": [{"name": "count(account_name)", "expression": "COUNT(`account_name`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "count(account_name)", "displayName": "At-Risk + Critical Accounts"}
+              },
+              "frame": {"showTitle": true, "title": "Accounts Needing Attention"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "revenue-by-product",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "revenue_data",
+                "fields": [
+                  {"name": "product_line", "expression": "`product_line`"},
+                  {"name": "sum(revenue)", "expression": "SUM(`revenue`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
             "spec": {
               "version": 3,
               "widgetType": "bar",
               "encodings": {
-                "x": { "fieldName": "quarter_label", "scale": { "type": "categorical" }, "displayName": "Quarter" },
-                "y": { "fieldName": "total_revenue", "scale": { "type": "quantitative" }, "displayName": "Revenue" },
-                "color": { "fieldName": "product_line", "scale": { "type": "categorical" }, "displayName": "Product" }
-              }
+                "x": {"fieldName": "product_line", "scale": {"type": "categorical"}, "displayName": "Product Line"},
+                "y": {"fieldName": "sum(revenue)", "scale": {"type": "quantitative"}, "displayName": "Revenue"}
+              },
+              "frame": {"showTitle": true, "title": "Revenue by Product Line"}
             }
           },
-          "position": { "x": 0, "y": 2, "width": 6, "height": 4 }
+          "position": {"x": 0, "y": 5, "width": 3, "height": 5}
         },
         {
           "widget": {
-            "name": "pipeline_funnel",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "pipeline_by_stage",
-                  "disaggregated": true,
-                  "fields": [
-                    { "name": "stage", "expression": "`stage`" },
-                    { "name": "deal_count", "expression": "`deal_count`" },
-                    { "name": "pipeline_value", "expression": "`pipeline_value`" }
-                  ]
-                }
+            "name": "health-tier-pie",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "health_data",
+                "fields": [
+                  {"name": "health_tier", "expression": "`health_tier`"},
+                  {"name": "count(account_name)", "expression": "COUNT(`account_name`)"}
+                ],
+                "disaggregated": false
               }
-            ],
+            }],
             "spec": {
               "version": 3,
-              "widgetType": "bar",
+              "widgetType": "pie",
               "encodings": {
-                "x": { "fieldName": "pipeline_value", "scale": { "type": "quantitative" }, "displayName": "Pipeline Value" },
-                "y": { "fieldName": "stage", "scale": { "type": "categorical" }, "displayName": "Stage" }
-              }
+                "angle": {"fieldName": "count(account_name)", "scale": {"type": "quantitative"}, "displayName": "Accounts"},
+                "color": {"fieldName": "health_tier", "scale": {"type": "categorical"}, "displayName": "Health Tier"}
+              },
+              "frame": {"showTitle": true, "title": "Customer Health Distribution"}
             }
           },
-          "position": { "x": 0, "y": 6, "width": 3, "height": 4 }
+          "position": {"x": 3, "y": 5, "width": 3, "height": 5}
         },
         {
           "widget": {
-            "name": "customer_health_dist",
-            "queries": [
-              {
-                "name": "main_query",
-                "query": {
-                  "datasetName": "health_distribution",
-                  "disaggregated": true,
-                  "fields": [
-                    { "name": "health_tier", "expression": "`health_tier`" },
-                    { "name": "accounts", "expression": "`accounts`" },
-                    { "name": "total_arr", "expression": "`total_arr`" }
-                  ]
-                }
-              }
-            ],
-            "spec": {
-              "version": 3,
-              "widgetType": "bar",
-              "encodings": {
-                "x": { "fieldName": "health_tier", "scale": { "type": "categorical" }, "displayName": "Health Tier" },
-                "y": { "fieldName": "total_arr", "scale": { "type": "quantitative" }, "displayName": "Total ARR" }
-              }
+            "name": "ai-insight-header",
+            "multilineTextboxSpec": {
+              "lines": ["### AI Executive Insight"]
             }
           },
-          "position": { "x": 3, "y": 6, "width": 3, "height": 4 }
+          "position": {"x": 0, "y": 10, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "ai-insight-counter",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "ai_insight_data",
+                "fields": [{"name": "ai_insight", "expression": "`ai_insight`"}],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "ai_insight", "displayName": "AI Insight"}
+              },
+              "frame": {"showTitle": false, "title": ""}
+            }
+          },
+          "position": {"x": 0, "y": 11, "width": 6, "height": 3}
         }
       ]
-    }
-  ],
-  "datasets": [
-    {
-      "name": "revenue_by_quarter",
-      "displayName": "Revenue by Quarter",
-      "query": "SELECT\n    `Fiscal Year` AS fiscal_year,\n    `Fiscal Quarter` AS fiscal_quarter,\n    CONCAT('FY', `Fiscal Year`, ' ', `Fiscal Quarter`) AS quarter_label,\n    `Product Line` AS product_line,\n    MEASURE(`Total Revenue`) AS total_revenue,\n    MEASURE(`Gross Margin Pct`) AS margin_pct,\n    MEASURE(`Customer Count`) AS customer_count\nFROM serverless_stable_k2zkdm_catalog.meridian_internal.revenue_metrics\nGROUP BY ALL\nORDER BY fiscal_year, fiscal_quarter"
     },
     {
-      "name": "pipeline_by_stage",
-      "displayName": "Pipeline by Stage",
-      "query": "SELECT\n    `Stage` AS stage,\n    MEASURE(`Deal Count`) AS deal_count,\n    MEASURE(`Pipeline Value`) AS pipeline_value,\n    MEASURE(`Total ARR`) AS total_arr,\n    MEASURE(`Avg Deal Size`) AS avg_deal_size\nFROM serverless_stable_k2zkdm_catalog.meridian_internal.pipeline_metrics\nGROUP BY ALL\nORDER BY pipeline_value DESC"
+      "name": "data-product-economics",
+      "displayName": "Data Product Economics",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "econ-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Data Product Economics"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "econ-subtitle",
+            "multilineTextboxSpec": {
+              "lines": ["Connecting usage to revenue — how a data product company answers 'are we charging the right price?'"]
+            }
+          },
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "kpi-avg-api-calls",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "usage_data",
+                "fields": [{"name": "avg(api_calls)", "expression": "AVG(`api_calls`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(api_calls)", "displayName": "Avg API Calls / Customer"}
+              },
+              "frame": {"showTitle": true, "title": "Avg Monthly API Calls"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-total-api-calls",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "usage_data",
+                "fields": [{"name": "sum(api_calls)", "expression": "SUM(`api_calls`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(api_calls)", "displayName": "Total API Calls"}
+              },
+              "frame": {"showTitle": true, "title": "Total API Calls"}
+            }
+          },
+          "position": {"x": 2, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-unique-accounts",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "usage_data",
+                "fields": [{"name": "countdistinct(account_name)", "expression": "COUNT(DISTINCT `account_name`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "countdistinct(account_name)", "displayName": "Active Accounts"}
+              },
+              "frame": {"showTitle": true, "title": "Active Accounts"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "api-calls-by-product",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "usage_data",
+                "fields": [
+                  {"name": "product_line", "expression": "`product_line`"},
+                  {"name": "sum(api_calls)", "expression": "SUM(`api_calls`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "product_line", "scale": {"type": "categorical"}, "displayName": "Product"},
+                "y": {"fieldName": "sum(api_calls)", "scale": {"type": "quantitative"}, "displayName": "API Calls"}
+              },
+              "frame": {"showTitle": true, "title": "API Calls by Product"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 3, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "revenue-per-product",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "revenue_data",
+                "fields": [
+                  {"name": "product_line", "expression": "`product_line`"},
+                  {"name": "sum(revenue)", "expression": "SUM(`revenue`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "product_line", "scale": {"type": "categorical"}, "displayName": "Product"},
+                "y": {"fieldName": "sum(revenue)", "scale": {"type": "quantitative"}, "displayName": "Revenue"}
+              },
+              "frame": {"showTitle": true, "title": "Revenue by Product"}
+            }
+          },
+          "position": {"x": 3, "y": 5, "width": 3, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "account-scorecard-header",
+            "multilineTextboxSpec": {
+              "lines": ["### Account Monetization Scorecard"]
+            }
+          },
+          "position": {"x": 0, "y": 10, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "account-scorecard-table",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "account_scorecard",
+                "fields": [
+                  {"name": "account_name", "expression": "`account_name`"},
+                  {"name": "arr", "expression": "`arr`"},
+                  {"name": "api_calls_30d", "expression": "`api_calls_30d`"},
+                  {"name": "revenue_per_call", "expression": "`revenue_per_call`"},
+                  {"name": "health_tier", "expression": "`health_tier`"},
+                  {"name": "usage_level", "expression": "`usage_level`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "account_name", "displayName": "Account"},
+                  {"fieldName": "arr", "displayName": "ARR"},
+                  {"fieldName": "api_calls_30d", "displayName": "API Calls (30d)"},
+                  {"fieldName": "revenue_per_call", "displayName": "Revenue / Call"},
+                  {"fieldName": "health_tier", "displayName": "Health Tier"},
+                  {"fieldName": "usage_level", "displayName": "Usage Level"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Account Monetization Scorecard"}
+            }
+          },
+          "position": {"x": 0, "y": 11, "width": 6, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "econ-genie-handoff",
+            "multilineTextboxSpec": {
+              "lines": ["**Explore further with Genie:** *'Which customers have declining API usage but high ARR?'* / *'What is the revenue per API call trend by quarter?'*"]
+            }
+          },
+          "position": {"x": 0, "y": 17, "width": 6, "height": 1}
+        }
+      ]
     },
     {
-      "name": "health_distribution",
-      "displayName": "Customer Health Distribution",
-      "query": "SELECT\n    `Health Tier` AS health_tier,\n    MEASURE(`Account Count`) AS accounts,\n    MEASURE(`Total ARR`) AS total_arr,\n    MEASURE(`Avg Health Score`) AS avg_score\nFROM serverless_stable_k2zkdm_catalog.meridian_internal.customer_health_metrics\nGROUP BY ALL\nORDER BY avg_score DESC"
+      "name": "pipeline-deep-dive",
+      "displayName": "Pipeline Deep Dive",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "pipeline-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Pipeline Deep Dive"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 4, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "filter-region",
+            "queries": [{
+              "name": "pipeline_data_region",
+              "query": {
+                "datasetName": "pipeline_data",
+                "fields": [{"name": "region", "expression": "`region`"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [{
+                  "fieldName": "region",
+                  "displayName": "Region",
+                  "queryName": "pipeline_data_region"
+                }]
+              },
+              "frame": {"showTitle": true, "title": "Region"}
+            }
+          },
+          "position": {"x": 4, "y": 0, "width": 2, "height": 2}
+        },
+        {
+          "widget": {
+            "name": "kpi-pipeline-value",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "pipeline_data",
+                "fields": [{"name": "sum(total_amount)", "expression": "SUM(`total_amount`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(total_amount)", "displayName": "Pipeline Value"}
+              },
+              "frame": {"showTitle": true, "title": "Total Pipeline Value"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-avg-deal",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "pipeline_data",
+                "fields": [{"name": "avg(avg_deal_size)", "expression": "AVG(`avg_deal_size`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(avg_deal_size)", "displayName": "Avg Deal Size"}
+              },
+              "frame": {"showTitle": true, "title": "Avg Deal Size"}
+            }
+          },
+          "position": {"x": 2, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-deal-count",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "pipeline_data",
+                "fields": [{"name": "sum(deal_count)", "expression": "SUM(`deal_count`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(deal_count)", "displayName": "Total Deals"}
+              },
+              "frame": {"showTitle": true, "title": "Total Deals"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "pipeline-by-stage",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "pipeline_data",
+                "fields": [
+                  {"name": "stage", "expression": "`stage`"},
+                  {"name": "sum(total_amount)", "expression": "SUM(`total_amount`)"},
+                  {"name": "product_line", "expression": "`product_line`"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "stage", "scale": {"type": "categorical"}, "displayName": "Stage"},
+                "y": {"fieldName": "sum(total_amount)", "scale": {"type": "quantitative"}, "displayName": "Pipeline Value"},
+                "color": {"fieldName": "product_line", "scale": {"type": "categorical"}, "displayName": "Product"}
+              },
+              "frame": {"showTitle": true, "title": "Pipeline by Stage (Stacked by Product)"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 3, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "pipeline-by-region",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "pipeline_data",
+                "fields": [
+                  {"name": "region", "expression": "`region`"},
+                  {"name": "sum(total_amount)", "expression": "SUM(`total_amount`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "region", "scale": {"type": "categorical"}, "displayName": "Region"},
+                "y": {"fieldName": "sum(total_amount)", "scale": {"type": "quantitative"}, "displayName": "Pipeline Value"}
+              },
+              "frame": {"showTitle": true, "title": "Pipeline by Region"}
+            }
+          },
+          "position": {"x": 3, "y": 5, "width": 3, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "pipeline-deals-table",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "pipeline_data",
+                "fields": [
+                  {"name": "stage", "expression": "`stage`"},
+                  {"name": "product_line", "expression": "`product_line`"},
+                  {"name": "region", "expression": "`region`"},
+                  {"name": "fiscal_quarter", "expression": "`fiscal_quarter`"},
+                  {"name": "deal_count", "expression": "`deal_count`"},
+                  {"name": "total_amount", "expression": "`total_amount`"},
+                  {"name": "total_arr", "expression": "`total_arr`"},
+                  {"name": "avg_deal_size", "expression": "`avg_deal_size`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "stage", "displayName": "Stage"},
+                  {"fieldName": "product_line", "displayName": "Product"},
+                  {"fieldName": "region", "displayName": "Region"},
+                  {"fieldName": "fiscal_quarter", "displayName": "Quarter"},
+                  {"fieldName": "deal_count", "displayName": "Deals"},
+                  {"fieldName": "total_amount", "displayName": "Pipeline Value"},
+                  {"fieldName": "total_arr", "displayName": "ARR"},
+                  {"fieldName": "avg_deal_size", "displayName": "Avg Deal Size"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Pipeline Detail"}
+            }
+          },
+          "position": {"x": 0, "y": 11, "width": 6, "height": 6}
+        }
+      ]
+    },
+    {
+      "name": "customer-health",
+      "displayName": "Customer Health",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "health-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Customer Health"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "health-subtitle",
+            "multilineTextboxSpec": {
+              "lines": ["Account-level health scoring — sorted worst-first for immediate attention"]
+            }
+          },
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "kpi-avg-health",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "health_data",
+                "fields": [{"name": "avg(health_score)", "expression": "AVG(`health_score`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(health_score)", "displayName": "Avg Health Score"}
+              },
+              "frame": {"showTitle": true, "title": "Avg Health Score"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-critical-count",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "health_data",
+                "fields": [{"name": "count(account_name)", "expression": "COUNT(`account_name`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "count(account_name)", "displayName": "Total Accounts"}
+              },
+              "frame": {"showTitle": true, "title": "Total Accounts"}
+            }
+          },
+          "position": {"x": 2, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-avg-products",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "health_data",
+                "fields": [{"name": "avg(products_subscribed)", "expression": "AVG(`products_subscribed`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(products_subscribed)", "displayName": "Avg Products Subscribed"}
+              },
+              "frame": {"showTitle": true, "title": "Avg Products Subscribed"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "health-by-arr",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "health_data",
+                "fields": [
+                  {"name": "health_tier", "expression": "`health_tier`"},
+                  {"name": "sum(arr)", "expression": "SUM(`arr`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "health_tier", "scale": {"type": "categorical"}, "displayName": "Health Tier"},
+                "y": {"fieldName": "sum(arr)", "scale": {"type": "quantitative"}, "displayName": "Total ARR"}
+              },
+              "frame": {"showTitle": true, "title": "ARR by Health Tier"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 6, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "health-detail-table",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "health_data",
+                "fields": [
+                  {"name": "account_name", "expression": "`account_name`"},
+                  {"name": "arr", "expression": "`arr`"},
+                  {"name": "health_score", "expression": "`health_score`"},
+                  {"name": "api_calls_30d", "expression": "`api_calls_30d`"},
+                  {"name": "error_rate_30d", "expression": "`error_rate_30d`"},
+                  {"name": "health_tier", "expression": "`health_tier`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "account_name", "displayName": "Account"},
+                  {"fieldName": "arr", "displayName": "ARR"},
+                  {"fieldName": "health_score", "displayName": "Health Score"},
+                  {"fieldName": "api_calls_30d", "displayName": "API Calls (30d)"},
+                  {"fieldName": "error_rate_30d", "displayName": "Error Rate"},
+                  {"fieldName": "health_tier", "displayName": "Tier"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Customer Health Scorecard"}
+            }
+          },
+          "position": {"x": 0, "y": 10, "width": 6, "height": 6}
+        },
+        {
+          "widget": {
+            "name": "health-genie-handoff",
+            "multilineTextboxSpec": {
+              "lines": ["**Ask Genie:** *'Which at-risk accounts had the biggest ARR drop this quarter?'* / *'Show me accounts with error rates above 5%'*"]
+            }
+          },
+          "position": {"x": 0, "y": 16, "width": 6, "height": 1}
+        }
+      ]
+    },
+    {
+      "name": "product-usage",
+      "displayName": "Product Usage",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "usage-title",
+            "multilineTextboxSpec": {
+              "lines": ["## Product Usage"]
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "usage-subtitle",
+            "multilineTextboxSpec": {
+              "lines": ["API activity and performance metrics across Meridian's product portfolio"]
+            }
+          },
+          "position": {"x": 0, "y": 1, "width": 6, "height": 1}
+        },
+        {
+          "widget": {
+            "name": "kpi-total-calls",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "usage_data",
+                "fields": [{"name": "sum(api_calls)", "expression": "SUM(`api_calls`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "sum(api_calls)", "displayName": "Total API Calls"}
+              },
+              "frame": {"showTitle": true, "title": "Total API Calls"}
+            }
+          },
+          "position": {"x": 0, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-avg-response",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "usage_data",
+                "fields": [{"name": "avg(avg_response_ms)", "expression": "AVG(`avg_response_ms`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(avg_response_ms)", "displayName": "Avg Response (ms)"}
+              },
+              "frame": {"showTitle": true, "title": "Avg Response Time (ms)"}
+            }
+          },
+          "position": {"x": 2, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "kpi-error-rate",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "usage_data",
+                "fields": [{"name": "avg(error_rate)", "expression": "AVG(`error_rate`)"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {"fieldName": "avg(error_rate)", "displayName": "Avg Error Rate"}
+              },
+              "frame": {"showTitle": true, "title": "Error Rate"}
+            }
+          },
+          "position": {"x": 4, "y": 2, "width": 2, "height": 3}
+        },
+        {
+          "widget": {
+            "name": "calls-by-product-bar",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "usage_data",
+                "fields": [
+                  {"name": "product_line", "expression": "`product_line`"},
+                  {"name": "sum(api_calls)", "expression": "SUM(`api_calls`)"}
+                ],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {"fieldName": "product_line", "scale": {"type": "categorical"}, "displayName": "Product"},
+                "y": {"fieldName": "sum(api_calls)", "scale": {"type": "quantitative"}, "displayName": "API Calls"}
+              },
+              "frame": {"showTitle": true, "title": "API Calls by Product"}
+            }
+          },
+          "position": {"x": 0, "y": 5, "width": 6, "height": 5}
+        },
+        {
+          "widget": {
+            "name": "usage-detail-table",
+            "queries": [{
+              "name": "main_query",
+              "query": {
+                "datasetName": "usage_data",
+                "fields": [
+                  {"name": "account_name", "expression": "`account_name`"},
+                  {"name": "product_line", "expression": "`product_line`"},
+                  {"name": "api_calls", "expression": "`api_calls`"},
+                  {"name": "unique_users", "expression": "`unique_users`"},
+                  {"name": "avg_response_ms", "expression": "`avg_response_ms`"},
+                  {"name": "error_rate", "expression": "`error_rate`"},
+                  {"name": "bytes_served", "expression": "`bytes_served`"}
+                ],
+                "disaggregated": true
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {"fieldName": "account_name", "displayName": "Account"},
+                  {"fieldName": "product_line", "displayName": "Product"},
+                  {"fieldName": "api_calls", "displayName": "API Calls"},
+                  {"fieldName": "unique_users", "displayName": "Users"},
+                  {"fieldName": "avg_response_ms", "displayName": "Avg Response (ms)"},
+                  {"fieldName": "error_rate", "displayName": "Error Rate"},
+                  {"fieldName": "bytes_served", "displayName": "Bytes Served"}
+                ]
+              },
+              "frame": {"showTitle": true, "title": "Usage Detail by Account & Product"}
+            }
+          },
+          "position": {"x": 0, "y": 10, "width": 6, "height": 6}
+        }
+      ]
+    },
+    {
+      "name": "global-filters",
+      "displayName": "Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layout": [
+        {
+          "widget": {
+            "name": "filter-fiscal-quarter",
+            "queries": [{
+              "name": "revenue_data_fiscal_quarter",
+              "query": {
+                "datasetName": "revenue_data",
+                "fields": [{"name": "fiscal_quarter", "expression": "`fiscal_quarter`"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [{
+                  "fieldName": "fiscal_quarter",
+                  "displayName": "Fiscal Quarter",
+                  "queryName": "revenue_data_fiscal_quarter"
+                }]
+              },
+              "frame": {"showTitle": true, "title": "Fiscal Quarter"}
+            }
+          },
+          "position": {"x": 0, "y": 0, "width": 2, "height": 2}
+        },
+        {
+          "widget": {
+            "name": "filter-product-line",
+            "queries": [{
+              "name": "revenue_data_product_line",
+              "query": {
+                "datasetName": "revenue_data",
+                "fields": [{"name": "product_line", "expression": "`product_line`"}],
+                "disaggregated": false
+              }
+            }],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [{
+                  "fieldName": "product_line",
+                  "displayName": "Product Line",
+                  "queryName": "revenue_data_product_line"
+                }]
+              },
+              "frame": {"showTitle": true, "title": "Product Line"}
+            }
+          },
+          "position": {"x": 2, "y": 0, "width": 2, "height": 2}
+        }
+      ]
     }
   ]
 }

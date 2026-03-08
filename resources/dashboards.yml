@@ -8,3 +8,30 @@ resources:
       permissions:
         - level: CAN_READ
           group_name: users
+
+    research_intelligence_dashboard:
+      display_name: "Meridian Research Intelligence"
+      warehouse_id: ${var.warehouse_id}
+      file_path: ../src/dashboards/research_intelligence.lvdash.json
+
+      permissions:
+        - level: CAN_READ
+          group_name: users
+
+    regulatory_landscape_dashboard:
+      display_name: "Meridian Regulatory Landscape"
+      warehouse_id: ${var.warehouse_id}
+      file_path: ../src/dashboards/regulatory_landscape.lvdash.json
+
+      permissions:
+        - level: CAN_READ
+          group_name: users
+
+    platform_operations_dashboard:
+      display_name: "Meridian Platform Operations"
+      warehouse_id: ${var.warehouse_id}
+      file_path: ../src/dashboards/platform_operations.lvdash.json
+
+      permissions:
+        - level: CAN_READ
+          group_name: users
