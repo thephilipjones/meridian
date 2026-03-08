@@ -11,20 +11,22 @@ import pytest
 
 
 class TestGenerateCRM:
-    def test_generates_expected_volume(self):
-        from src.data_gen.generate_crm import generate_accounts, generate_deals
+    def test_generates_deals_for_all_accounts(self):
+        from src.data_gen.generate_crm import CURATED_ACCOUNTS, _generate_deals_for_account
 
-        accounts = generate_accounts(50)
-        deals = generate_deals(accounts, 200)
+        all_deals = []
+        for account in CURATED_ACCOUNTS[:5]:
+            deals = _generate_deals_for_account(account)
+            assert len(deals) > 0
+            all_deals.extend(deals)
 
-        assert len(accounts) == 50
-        assert len(deals) == 200
+        account_names = {d["account_name"] for d in all_deals}
+        assert len(account_names) == 5
 
     def test_deal_fields_present(self):
-        from src.data_gen.generate_crm import generate_accounts, generate_deals
+        from src.data_gen.generate_crm import CURATED_ACCOUNTS, _generate_deals_for_account
 
-        accounts = generate_accounts(10)
-        deals = generate_deals(accounts, 10)
+        deals = _generate_deals_for_account(CURATED_ACCOUNTS[0])
 
         required_fields = [
             "deal_id", "account_name", "account_id", "deal_name",
@@ -35,23 +37,21 @@ class TestGenerateCRM:
                 assert field in deal, f"Missing field: {field}"
 
     def test_valid_stages(self):
-        from src.data_gen.generate_crm import STAGES, generate_accounts, generate_deals
+        from src.data_gen.generate_crm import CURATED_ACCOUNTS, STAGES, _generate_deals_for_account
 
-        accounts = generate_accounts(10)
-        deals = generate_deals(accounts, 100)
-
-        for deal in deals:
-            assert deal["stage"] in STAGES
+        for account in CURATED_ACCOUNTS[:10]:
+            deals = _generate_deals_for_account(account)
+            for deal in deals:
+                assert deal["stage"] in STAGES
 
     def test_arr_only_for_closed_won(self):
-        from src.data_gen.generate_crm import generate_accounts, generate_deals
+        from src.data_gen.generate_crm import CURATED_ACCOUNTS, _generate_deals_for_account
 
-        accounts = generate_accounts(50)
-        deals = generate_deals(accounts, 500)
-
-        for deal in deals:
-            if deal["stage"] != "Closed Won":
-                assert deal["arr"] == 0.0
+        for account in CURATED_ACCOUNTS[:10]:
+            deals = _generate_deals_for_account(account)
+            for deal in deals:
+                if deal["stage"] != "Closed Won":
+                    assert deal["arr"] == 0.0
 
     def test_csv_output(self):
         from src.data_gen.generate_crm import main
@@ -64,20 +64,19 @@ class TestGenerateCRM:
 
 
 class TestGenerateWebEvents:
-    def test_generates_events(self):
-        from src.data_gen.generate_web_events import generate_customers, generate_events
+    def test_generates_events_per_account(self):
+        from src.data_gen.generate_web_events import CURATED_ACCOUNTS, _generate_events_for_account
 
-        customers = generate_customers(10)
-        events = generate_events(customers, 500)
-
-        assert len(events) > 0
-        assert len(events) <= 500
+        for account in CURATED_ACCOUNTS[:5]:
+            events = _generate_events_for_account(account)
+            assert len(events) > 0
+            for event in events:
+                assert event["account_name"] == account["name"]
 
     def test_event_fields_present(self):
-        from src.data_gen.generate_web_events import generate_customers, generate_events
+        from src.data_gen.generate_web_events import CURATED_ACCOUNTS, _generate_events_for_account
 
-        customers = generate_customers(5)
-        events = generate_events(customers, 50)
+        events = _generate_events_for_account(CURATED_ACCOUNTS[0])
 
         required_fields = [
             "event_id", "event_type", "event_timestamp",

@@ -130,7 +130,7 @@ def revenue_summary():
 )
 def customer_health():
     deals = dp.read("cleaned_deals")
-    usage = dp.read("product_usage")
+    events = dp.read("cleaned_web_events")
 
     account_arr = (
         deals
@@ -142,15 +142,47 @@ def customer_health():
         )
     )
 
+    # Calculate 30d metrics relative to the latest event date in the data
+    # (not current_date, since synthetic data has a fixed range)
+    max_ts = events.agg(F.max("event_timestamp").alias("max_ts"))
+    recent_events = (
+        events
+        .crossJoin(max_ts)
+        .filter(F.col("event_timestamp") >= F.date_sub(F.col("max_ts"), 30))
+    )
+
     recent_usage = (
-        usage
+        recent_events
         .groupBy("account_name")
         .agg(
-            F.sum("api_calls").alias("api_calls_30d"),
-            F.avg("avg_response_ms").alias("avg_response_ms_30d"),
-            F.avg("error_rate").alias("error_rate_30d"),
+            F.count("event_id").alias("api_calls_30d"),
+            F.avg("response_ms").alias("avg_response_ms_30d"),
+            (
+                F.sum(F.when(F.col("status_code") >= 400, 1).otherwise(0))
+                / F.count("*")
+            ).alias("error_rate_30d"),
         )
     )
+
+    has_usage = F.col("api_calls_30d") > 0
+
+    usage_score = F.least(F.col("api_calls_30d") / 1000.0, F.lit(1.0))
+
+    response_score = F.when(
+        ~has_usage, F.lit(0.0)
+    ).when(
+        F.col("avg_response_ms_30d") < 500, F.lit(1.0)
+    ).when(
+        F.col("avg_response_ms_30d") < 2000, F.lit(0.6)
+    ).otherwise(F.lit(0.2))
+
+    error_score = F.when(
+        ~has_usage, F.lit(0.0)
+    ).when(
+        F.col("error_rate_30d") < 0.01, F.lit(1.0)
+    ).when(
+        F.col("error_rate_30d") < 0.05, F.lit(0.6)
+    ).otherwise(F.lit(0.2))
 
     return (
         account_arr
@@ -160,17 +192,7 @@ def customer_health():
         .withColumn("error_rate_30d", F.coalesce(F.col("error_rate_30d"), F.lit(0.0)))
         .withColumn(
             "health_score",
-            (
-                F.least(F.col("api_calls_30d") / 1000.0, F.lit(1.0)) * 0.4
-                + F.when(F.col("avg_response_ms_30d") < 500, 1.0)
-                .when(F.col("avg_response_ms_30d") < 2000, 0.6)
-                .otherwise(0.2)
-                * 0.3
-                + F.when(F.col("error_rate_30d") < 0.01, 1.0)
-                .when(F.col("error_rate_30d") < 0.05, 0.6)
-                .otherwise(0.2)
-                * 0.3
-            ),
+            (usage_score * 0.4) + (response_score * 0.3) + (error_score * 0.3),
         )
         .withColumn(
             "health_tier",

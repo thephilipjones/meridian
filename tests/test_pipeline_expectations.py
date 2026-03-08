@@ -11,41 +11,41 @@ class TestCRMExpectations:
     """Validate CRM data against silver pipeline expectations."""
 
     def test_deal_id_not_null(self):
-        from src.data_gen.generate_crm import generate_accounts, generate_deals
+        from src.data_gen.generate_crm import CURATED_ACCOUNTS, _generate_deals_for_account
 
-        accounts = generate_accounts(10)
-        deals = generate_deals(accounts, 100)
-        for deal in deals:
-            assert deal["deal_id"] is not None
-            assert len(deal["deal_id"]) > 0
+        for account in CURATED_ACCOUNTS[:10]:
+            deals = _generate_deals_for_account(account)
+            for deal in deals:
+                assert deal["deal_id"] is not None
+                assert len(deal["deal_id"]) > 0
 
     def test_amount_non_negative(self):
-        from src.data_gen.generate_crm import generate_accounts, generate_deals
+        from src.data_gen.generate_crm import CURATED_ACCOUNTS, _generate_deals_for_account
 
-        accounts = generate_accounts(10)
-        deals = generate_deals(accounts, 100)
-        for deal in deals:
-            assert deal["amount"] >= 0
+        for account in CURATED_ACCOUNTS[:10]:
+            deals = _generate_deals_for_account(account)
+            for deal in deals:
+                assert deal["amount"] >= 0
 
 
 class TestWebEventExpectations:
     """Validate web events against silver pipeline expectations."""
 
     def test_event_id_not_null(self):
-        from src.data_gen.generate_web_events import generate_customers, generate_events
+        from src.data_gen.generate_web_events import CURATED_ACCOUNTS, _generate_events_for_account
 
-        customers = generate_customers(5)
-        events = generate_events(customers, 100)
-        for event in events:
-            assert event["event_id"] is not None
+        for account in CURATED_ACCOUNTS[:5]:
+            events = _generate_events_for_account(account)
+            for event in events:
+                assert event["event_id"] is not None
 
     def test_timestamp_not_null(self):
-        from src.data_gen.generate_web_events import generate_customers, generate_events
+        from src.data_gen.generate_web_events import CURATED_ACCOUNTS, _generate_events_for_account
 
-        customers = generate_customers(5)
-        events = generate_events(customers, 100)
-        for event in events:
-            assert event["event_timestamp"] is not None
+        for account in CURATED_ACCOUNTS[:5]:
+            events = _generate_events_for_account(account)
+            for event in events:
+                assert event["event_timestamp"] is not None
 
 
 class TestFinancialExpectations:
