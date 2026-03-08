@@ -30,7 +30,7 @@ PROFILES: dict[str, Profile] = {
     "sarah": Profile(
         id="sarah",
         name="Sarah Chen",
-        role="RevOps Analyst",
+        role="VP, Product Analytics",
         persona="Internal",
         business_unit="internal",
         avatar_initials="SC",
@@ -41,25 +41,25 @@ PROFILES: dict[str, Profile] = {
     "james": Profile(
         id="james",
         name="James Rivera",
-        role="Data Engineering Lead, Acme Bank",
+        role="VP, Regulatory Affairs, Acme Bank",
         persona="External Customer (Regulatory)",
         business_unit="regulatory",
         avatar_initials="JR",
         allowed_schemas=["regulatory"],
         genie_space_id=os.environ.get("REGULATORY_GENIE_SPACE_ID"),
-        nav_tabs=["Data Catalog", "Genie", "Connect Your Environment"],
+        nav_tabs=["Regulatory Feed", "Data Catalog", "Genie", "Connect Your Environment"],
         subscription_tier="sec_only",
     ),
     "anika": Profile(
         id="anika",
         name="Dr. Anika Park",
-        role="Research Director, NIH",
+        role="Research Director, NIH — Oncology Informatics",
         persona="External Customer (Research)",
         business_unit="research",
         avatar_initials="AP",
         allowed_schemas=["research"],
         genie_space_id=os.environ.get("RESEARCH_GENIE_SPACE_ID"),
-        nav_tabs=["Research Q&A", "Paper Browser", "Citation Explorer"],
+        nav_tabs=["Research Overview", "Research Q&A", "Paper Browser", "Citation Explorer"],
     ),
 }
 

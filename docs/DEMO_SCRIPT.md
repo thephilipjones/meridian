@@ -84,59 +84,100 @@
 
 ---
 
-## Chapter 3: "The Portal" (7 min)
+## Chapter 3: "The Portal" (9 min)
 
 ### Narrative
 
-> *"Meridian's customers and internal teams interact with data through the Meridian Portal — built as a Databricks App with FastAPI on the backend and React on the frontend."*
+> *"Meridian's customers and internal teams interact with data through the Meridian Portal — built as a Databricks App with FastAPI on the backend and React on the frontend. Each persona lands on an intelligence-first view — not raw data, but actionable insight."*
 
 ### What to Show
 
 **Open the Meridian Portal app in the browser.**
 
-#### As Sarah Chen (Internal RevOps) — 2 min
+#### As Sarah Chen (VP, Product Analytics) — 3 min
+
+> Thread: Sarah opens Meridian the way a Bloomberg Terminal user hits `TOP<GO>` — with an AI-generated summary of what matters today.
 
 1. Click **Sarah Chen** in the profile switcher
-2. Show the **Sales Dashboard** tab
-   - *"Sarah sees the full picture — pipeline by stage, revenue by product, customer health. This is powered by gold tables and Metric Views."*
+2. The **Sales Dashboard** tab opens with the **AI Business Brief** at the top
+   - *"Sarah's morning starts here — an AI-generated executive summary powered by Foundation Model API. The LLM synthesizes across four separate governed gold tables in a single brief: revenue trajectory, customer risk changes, product adoption anomalies, platform health."*
+   - Point out the 2×2 highlight cards with sentiment-colored borders (green/amber/red/blue)
+   - *"This is Foundation Model API used for business intelligence summarization — not just RAG, but a novel pattern that composes structured data into narrative insight."*
+   - Click the **Refresh** button to show the brief regenerates
+   - *"The brief is cached for 5 minutes — fast on tab switches, but always fresh."*
 
-3. **Run notebook cell: "Sales pipeline by stage"** — pipe syntax aggregate
-   - *"Here's the same data Sarah sees, expressed in pipe syntax SQL."*
+3. Scroll down to the **Sales Dashboard** charts
+   - *"Below the brief, Sarah has the full picture — pipeline by stage, revenue by product, customer health. This is powered by gold tables and Metric Views."*
 
 4. **Run notebook cell: "Revenue via Metric Views"**
-   - *"Metric Views are governed KPI definitions stored in Unity Catalog. Total Revenue, Gross Margin Pct — defined once, consumed everywhere: Genie, dashboards, SQL. No more conflicting metric definitions across teams."*
+   - *"Metric Views are governed KPI definitions stored in Unity Catalog. Total Revenue, Gross Margin Pct — defined once, consumed everywhere: Genie, dashboards, SQL, and the AI Business Brief."*
 
 5. **Open the Internal Analytics Genie space** (or Genie tab in the portal)
    - Ask: *"What was Q4 revenue by product line compared to last year?"*
    - *"Genie generates SQL against the governed gold tables and Metric Views. The custom instructions we defined ensure it uses fiscal quarters — Meridian's FY starts February — and always shows YoY comparison."*
 
-#### As Dr. Anika Park (Research) — 3 min
+#### As James Rivera (VP, Regulatory Affairs, Acme Bank) — 3 min
 
-> Thread: follow Dr. Park through three ways of exploring the same research area (checkpoint inhibitors in cancer) — keyword search, semantic Q&A, and natural-language analytics.
+> Thread: James monitors regulatory activity the way a Bloomberg Government subscriber does — temporal, entity-centric, actionable.
+
+1. Click **James Rivera** in the profile switcher
+2. The **Regulatory Feed** tab opens — the new default landing
+   - *"James doesn't browse table schemas — he monitors regulatory activity. This is a live intelligence feed: recent SEC filings, entity risk profiles, and regulatory actions relevant to his coverage universe."*
+   - Point out the summary bar: total actions, entities, risk signals over the last 90 days
+   - *"This is gold table data products rendered as products — not schemas, but intelligence."*
+
+3. Click **View entity profile** on one of the feed items
+   - *"James can drill into any entity to see its full risk profile — industry, jurisdiction, CIK, risk signal count, and filing links."*
+   - Point out the cross-table join: regulatory_actions + company_entities + company_risk_signals
+
+4. Scroll to a **locked item** (FDA or USPTO source)
+   - *"Notice the locked items — unsubscribed data sources appear as teasers with an upgrade CTA. This mirrors Bloomberg Terminal's module-locked experience. The subscription tier gates access at the API level."*
+
+5. Switch to the **Genie** tab
+   - Ask: *"Which companies had the most SEC filings this quarter?"*
+   - *"From the feed to Genie for investigation — the flow feels natural. James goes from monitoring to analysis seamlessly."*
+
+6. Switch to **Data Catalog** tab
+   - *"For the technically curious, the full schema documentation is still available — but it's no longer the first thing James sees."*
+
+#### As Dr. Anika Park (Research Director, NIH — Oncology Informatics) — 3 min
+
+> Thread: Anika sees the shape of the literature before she asks a question — the Web of Science "Analyze Results" experience.
 
 1. Click **Dr. Anika Park** in the profile switcher
-2. Show the **Research Q&A** tab — click: *"What is the role of checkpoint inhibitors in treating non-small cell lung cancer?"*
-   - While waiting, explain: *"This is Vector Search plus Foundation Model API. The question is embedded, matched against 5,000 article abstracts, and the top results are synthesized into a cited answer."*
-   - Point out the cited sources, preprint flags, and relevance scores in the generated answer
-   - *"The system only uses articles that are semantically relevant — if a topic isn't in the corpus, it says so instead of hallucinating."*
+2. The **Research Overview** tab opens — the new default landing
+   - *"Anika doesn't start with a blank search box — she starts with her landscape. 5,000+ articles, citation counts, author profiles, and trending MeSH topics — all at a glance."*
+   - Point out the KPI ribbon: total articles, total citations, total authors, peer-reviewed percentage
+   - *"This is bibliometric intelligence — the same kind of corpus-level analytics that defines Clarivate's Web of Science."*
 
-3. **Run notebook cell: "Checkpoint inhibitor articles"** — pipe syntax search
-   - *"Here's what the SQL behind a simpler search looks like — pipe syntax keeps it readable. Same data, same topic, but now you see the individual articles ranked by citation count."*
-   - Point out `|> ORDER BY citation_count DESC` and the preprint/peer-reviewed status column
+3. Point out the **Publication Trend** chart
+   - *"The publication trend shows output over time — Anika can see the field's trajectory before asking a single question."*
 
-4. **Open the Research Assistant Genie space**
-   - Ask: *"What are the most cited meta-analyses on immunotherapy for lung cancer?"*
-   - Wait for the response, then point out structured results: DOIs, citation counts, study type filtering
-   - *"Genie generates SQL against the governed research tables. Its custom instructions understand publication types, citation metrics, and the difference between preprints and peer-reviewed work."*
+4. Point out **Top Journals** and **Top Authors by h-index**
+   - *"Top journals and authors with h-index — standard academic metrics, computed at scale from the governed research tables."*
 
-   - Follow up: *"Who are the top 5 authors by h-index in this area?"*
+5. Scroll to the **MeSH Topic Grid**
+   - *"MeSH terms rendered as proportional bars — Anika can see which research topics dominate the corpus. This uses the /api/research/mesh-terms endpoint we built in Phase 2 but never surfaced until now."*
+   - *"Notice 'Neoplasms' and 'Immunotherapy' are prominent — of course they are, this is an oncology informatics researcher's view."*
+
+6. Switch to **Research Q&A** tab
+   - *"The overview creates context for the AI Research Assistant. Anika saw oncology trending — now she asks a specific question."*
+   - Click: *"What is the role of checkpoint inhibitors in treating non-small cell lung cancer?"*
+   - Point out the cited sources, preprint flags, and relevance scores
+
+7. **Open the Research Assistant Genie space** or use the Genie tab
+   - Ask: *"Who are the top 5 authors by h-index in immunotherapy?"*
    - *"Genie crosses tables seamlessly — articles, authors, citations — to answer composite questions."*
 
 #### Key Talking Points
 - Databricks Apps: full-stack (FastAPI + React) deployed and managed by the platform
+- **Intelligence-first UX**: each persona lands on actionable insight, not raw data
+- **Foundation Model API**: used for business summarization (Sarah's brief) and RAG Q&A (Anika's research assistant)
+- **Cross-table composition**: gold tables joined into entity-level intelligence (James's feed)
+- **Subscription-gated value**: locked teasers for unsubscribed sources (James's locked items)
 - Profile switcher: same app, different data scopes — demonstrates multi-tenant UX
-- Metric Views: governed KPIs consumed by Genie and dashboards consistently
-- Genie custom instructions: domain-expert behavior without custom model training
+- Metric Views: governed KPIs consumed by Genie, dashboards, and the AI brief consistently
+- MeSH terms endpoint: built in Phase 2, now surfaced in the corpus overview
 
 ---
 

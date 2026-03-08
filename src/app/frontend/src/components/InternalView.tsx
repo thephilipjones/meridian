@@ -11,6 +11,7 @@ import {
   Legend,
 } from "recharts";
 import GenieEmbed from "./GenieEmbed";
+import BusinessBrief from "./BusinessBrief";
 import { useFetch, ErrorBanner } from "../hooks/useFetch";
 import {
   SalesDashboardSkeleton,
@@ -91,6 +92,8 @@ function SalesDashboard() {
 
   return (
     <div className="space-y-6">
+      <BusinessBrief />
+
       {/* KPI Cards */}
       <div className="grid grid-cols-4 gap-4">
         {[

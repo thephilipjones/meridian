@@ -1,6 +1,7 @@
 import { useState } from "react";
 import DataCatalog from "./DataCatalog";
 import GenieEmbed from "./GenieEmbed";
+import RegulatoryFeed from "./RegulatoryFeed";
 import { useFetch, ErrorBanner } from "../hooks/useFetch";
 import { SkeletonConnectionInfo } from "./Skeleton";
 import type { ConnectionInfo, CodeSnippet } from "../types";
@@ -114,6 +115,8 @@ function ConnectEnvironment() {
 
 export default function CustomerRegulatoryView({ activeTab }: Props) {
   switch (activeTab) {
+    case "Regulatory Feed":
+      return <RegulatoryFeed />;
     case "Data Catalog":
       return <DataCatalog />;
     case "Genie":
@@ -121,6 +124,6 @@ export default function CustomerRegulatoryView({ activeTab }: Props) {
     case "Connect Your Environment":
       return <ConnectEnvironment />;
     default:
-      return <DataCatalog />;
+      return <RegulatoryFeed />;
   }
 }

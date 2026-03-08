@@ -184,6 +184,60 @@ def get_citations(
     return execute_query(query, params or None)
 
 
+@router.get("/overview")
+@ttl_cache(seconds=120)
+def get_research_overview():
+    """Bibliometric summary statistics for the research corpus.
+
+    Aggregates total articles, citations, authors, preprint ratio,
+    publication trend by year, top journals, and top authors.
+    """
+    totals = execute_query(f"""
+        SELECT
+            COUNT(*) AS total_articles,
+            COALESCE(SUM(citation_count), 0) AS total_citations,
+            SUM(CASE WHEN LOWER(is_preprint) = 'true' THEN 1 ELSE 0 END) AS preprint_count
+        FROM {_catalog}.meridian_research.articles
+    """)
+    stats = totals[0] if totals else {"total_articles": 0, "total_citations": 0, "preprint_count": 0}
+
+    author_count = execute_query(f"SELECT COUNT(*) AS cnt FROM {_catalog}.meridian_research.authors")
+    stats["total_authors"] = author_count[0]["cnt"] if author_count else 0
+
+    total = stats["total_articles"] or 1
+    stats["preprint_ratio"] = round(stats["preprint_count"] / total, 3)
+    stats["peer_reviewed_pct"] = round((1 - stats["preprint_count"] / total) * 100, 1)
+
+    pub_trend = execute_query(f"""
+        SELECT publication_year AS year, COUNT(*) AS count
+        FROM {_catalog}.meridian_research.articles
+        WHERE publication_year IS NOT NULL
+        GROUP BY publication_year
+        ORDER BY publication_year
+    """)
+    stats["publication_trend"] = pub_trend
+
+    top_journals = execute_query(f"""
+        SELECT journal, COUNT(*) AS count
+        FROM {_catalog}.meridian_research.articles
+        WHERE journal IS NOT NULL
+        GROUP BY journal
+        ORDER BY count DESC
+        LIMIT 5
+    """)
+    stats["top_journals"] = top_journals
+
+    top_authors = execute_query(f"""
+        SELECT full_name AS name, h_index, article_count AS articles
+        FROM {_catalog}.meridian_research.authors
+        ORDER BY h_index DESC, article_count DESC
+        LIMIT 5
+    """)
+    stats["top_authors"] = top_authors
+
+    return stats
+
+
 @router.get("/mesh-terms")
 @ttl_cache(seconds=60)
 def get_mesh_terms(limit: int = Query(50, le=500)):

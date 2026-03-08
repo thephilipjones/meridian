@@ -1,5 +1,6 @@
 import PaperBrowser from "./PaperBrowser";
 import CitationExplorer from "./CitationExplorer";
+import ResearchOverview from "./ResearchOverview";
 import { useState, useRef, useEffect } from "react";
 import type { Article } from "../types";
 
@@ -250,6 +251,8 @@ function ResearchQA() {
 
 export default function ResearchView({ activeTab }: Props) {
   switch (activeTab) {
+    case "Research Overview":
+      return <ResearchOverview />;
     case "Research Q&A":
       return <ResearchQA />;
     case "Paper Browser":
@@ -257,6 +260,6 @@ export default function ResearchView({ activeTab }: Props) {
     case "Citation Explorer":
       return <CitationExplorer />;
     default:
-      return <ResearchQA />;
+      return <ResearchOverview />;
   }
 }

@@ -1,7 +1,8 @@
 """Data catalog API endpoints for the customer regulatory view.
 
 Provides a browsable catalog of regulatory data products with
-subscription-aware access controls, schema details, and sample data.
+subscription-aware access controls, schema details, sample data,
+and a regulatory intelligence feed with entity-level risk signals.
 """
 
 import os
@@ -19,6 +20,12 @@ SUBSCRIPTION_TIERS = {
     "sec_only": {"regulatory_actions", "company_entities", "company_risk_signals"},
     "fda_only": {"regulatory_actions", "patent_landscape", "company_entities", "company_risk_signals"},
     "full": {"regulatory_actions", "patent_landscape", "company_entities", "company_risk_signals"},
+}
+
+_SOURCE_TIERS = {
+    "sec_only": ["SEC"],
+    "fda_only": ["SEC", "FDA"],
+    "full": ["SEC", "FDA", "USPTO"],
 }
 
 
@@ -94,3 +101,79 @@ def get_product_detail(table_name: str, subscription_tier: str = Query("sec_only
         "sample_rows": sample_rows,
         "row_count": row_count,
     }
+
+
+@router.get("/feed")
+@ttl_cache(seconds=120)
+def get_regulatory_feed(
+    subscription_tier: str = Query("sec_only"),
+    limit: int = Query(25, le=100),
+):
+    """Recent regulatory actions with entity context and risk signals.
+
+    Joins regulatory_actions with company_entities and company_risk_signals
+    to produce a rich intelligence feed. Items from unsubscribed sources
+    are returned with minimal detail and a locked flag for teaser display.
+    """
+    subscribed_sources = _SOURCE_TIERS.get(subscription_tier, ["SEC"])
+    all_sources = ["SEC", "FDA", "USPTO"]
+
+    source_list = ", ".join(f"'{s}'" for s in all_sources)
+    query = f"""
+        SELECT
+            ra.action_id,
+            ra.action_date,
+            ra.source,
+            ra.action_type,
+            ra.title,
+            ra.description,
+            ra.company_name,
+            ra.filing_url,
+            ce.entity_id,
+            ce.industry,
+            ce.cik_number,
+            ce.jurisdiction,
+            crs.overall_risk_level,
+            crs.risk_signal_count,
+            crs.latest_signal_date
+        FROM {_catalog}.meridian_regulatory.regulatory_actions ra
+        LEFT JOIN {_catalog}.meridian_regulatory.company_entities ce
+            ON ra.company_name = ce.company_name
+        LEFT JOIN {_catalog}.meridian_regulatory.company_risk_signals crs
+            ON ce.company_name = crs.company_name
+        WHERE ra.source IN ({source_list})
+        ORDER BY ra.action_date DESC
+        LIMIT {int(limit)}
+    """
+    rows = execute_query(query)
+
+    for row in rows:
+        row["is_subscribed"] = row.get("source") in subscribed_sources
+        if not row["is_subscribed"]:
+            row["description"] = None
+            row["filing_url"] = None
+            row["cik_number"] = None
+
+    return rows
+
+
+@router.get("/feed/summary")
+@ttl_cache(seconds=120)
+def get_feed_summary(subscription_tier: str = Query("sec_only")):
+    """Aggregate counts for the feed header: total actions, entities, risk signals."""
+    subscribed_sources = _SOURCE_TIERS.get(subscription_tier, ["SEC"])
+    source_list = ", ".join(f"'{s}'" for s in subscribed_sources)
+
+    stats = execute_query(f"""
+        SELECT
+            COUNT(DISTINCT ra.action_id) AS total_actions,
+            COUNT(DISTINCT ra.company_name) AS total_entities,
+            COALESCE(SUM(crs.risk_signal_count), 0) AS total_risk_signals
+        FROM {_catalog}.meridian_regulatory.regulatory_actions ra
+        LEFT JOIN {_catalog}.meridian_regulatory.company_risk_signals crs
+            ON ra.company_name = crs.company_name
+        WHERE ra.source IN ({source_list})
+            AND ra.action_date >= CURRENT_DATE - INTERVAL 90 DAYS
+    """)
+
+    return stats[0] if stats else {"total_actions": 0, "total_entities": 0, "total_risk_signals": 0}
