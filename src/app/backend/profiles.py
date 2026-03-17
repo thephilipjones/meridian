@@ -82,6 +82,7 @@ def get_all_profiles() -> list[dict]:
             "nav_tabs": p.nav_tabs,
             "business_unit": p.business_unit,
             "genie_space_id": p.genie_space_id,
+            "subscription_tier": p.subscription_tier,
         }
         for p in PROFILES.values()
     ]

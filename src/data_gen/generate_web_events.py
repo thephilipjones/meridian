@@ -38,8 +38,8 @@ ENDPOINTS = {
     "Custom Analytics": ["/api/v1/query", "/api/v1/reports", "/api/v1/dashboards"],
 }
 
-STATUS_CODES_NORMAL = [200, 200, 200, 200, 200, 200, 200, 200, 201, 400, 404, 500]
-STATUS_CODES_PROBLEMATIC = [200, 200, 200, 200, 200, 400, 404, 500, 500, 503]
+STATUS_CODES_NORMAL = [200] * 96 + [201] * 2 + [400] + [500]
+STATUS_CODES_PROBLEMATIC = [200] * 70 + [201] * 5 + [400] * 10 + [404] * 5 + [500] * 5 + [503] * 5
 
 EVENTS_PER_FILE = 2500
 

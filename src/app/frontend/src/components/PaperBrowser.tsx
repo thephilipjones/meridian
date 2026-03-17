@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ErrorBanner } from "../hooks/useFetch";
 import { SkeletonTable } from "./Skeleton";
 import type { Article } from "../types";
 
 export default function PaperBrowser() {
+  const [urlParams, setUrlParams] = useSearchParams();
   const [articles, setArticles] = useState<Article[]>([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(urlParams.get("search") ?? "");
   const [typeFilter, setTypeFilter] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -13,8 +15,16 @@ export default function PaperBrowser() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const meshParam = urlParams.get("search");
+    if (meshParam) {
+      setSearch(meshParam);
+      setUrlParams({}, { replace: true });
+    }
+  }, [urlParams, setUrlParams]);
+
+  useEffect(() => {
     fetchArticles();
-  }, [typeFilter, yearFilter]);
+  }, [typeFilter, yearFilter, search]);
 
   const fetchArticles = async () => {
     setLoading(true);

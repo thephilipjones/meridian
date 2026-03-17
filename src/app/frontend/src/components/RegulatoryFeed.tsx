@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useProfile } from "../contexts/ProfileContext";
 import { useFetch, ErrorBanner } from "../hooks/useFetch";
 
 interface FeedItem {
@@ -147,8 +148,10 @@ function EntityPanel({ item }: { item: FeedItem }) {
 }
 
 export default function RegulatoryFeed() {
-  const { data: feed, loading: loadingFeed, error: errFeed, refetch } = useFetch<FeedItem[]>("/api/catalog/feed?subscription_tier=sec_only&limit=30");
-  const { data: summary, loading: loadingSummary } = useFetch<FeedSummary>("/api/catalog/feed/summary?subscription_tier=sec_only");
+  const { activeProfile } = useProfile();
+  const tier = activeProfile?.subscription_tier ?? "sec_only";
+  const { data: feed, loading: loadingFeed, error: errFeed, refetch } = useFetch<FeedItem[]>(`/api/catalog/feed?subscription_tier=${tier}&limit=30`);
+  const { data: summary, loading: loadingSummary } = useFetch<FeedSummary>(`/api/catalog/feed/summary?subscription_tier=${tier}`);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const loading = loadingFeed || loadingSummary;
@@ -176,7 +179,7 @@ export default function RegulatoryFeed() {
               Regulatory Intelligence Feed
             </h2>
             <p className="mt-1 text-sm text-gray-500">
-              Acme Bank — SEC Tier
+              {activeProfile?.role?.split(",").pop()?.trim() ?? "Customer"} — {tier.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())} Tier
             </p>
           </div>
           <span className="text-xs text-gray-400">Last 90 Days</span>

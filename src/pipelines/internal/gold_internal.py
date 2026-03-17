@@ -164,12 +164,14 @@ def customer_health():
         )
     )
 
-    has_usage = F.col("api_calls_30d") > 0
+    # Require at least 50 calls before quality metrics are meaningful;
+    # below that, a single bad request skews the averages.
+    meaningful_usage = F.col("api_calls_30d") >= 50
 
-    usage_score = F.least(F.col("api_calls_30d") / 1000.0, F.lit(1.0))
+    usage_score = F.least(F.col("api_calls_30d") / 300.0, F.lit(1.0))
 
     response_score = F.when(
-        ~has_usage, F.lit(0.0)
+        ~meaningful_usage, F.lit(0.0)
     ).when(
         F.col("avg_response_ms_30d") < 500, F.lit(1.0)
     ).when(
@@ -177,11 +179,11 @@ def customer_health():
     ).otherwise(F.lit(0.2))
 
     error_score = F.when(
-        ~has_usage, F.lit(0.0)
+        ~meaningful_usage, F.lit(0.0)
     ).when(
-        F.col("error_rate_30d") < 0.01, F.lit(1.0)
+        F.col("error_rate_30d") < 0.02, F.lit(1.0)
     ).when(
-        F.col("error_rate_30d") < 0.05, F.lit(0.6)
+        F.col("error_rate_30d") < 0.10, F.lit(0.6)
     ).otherwise(F.lit(0.2))
 
     return (

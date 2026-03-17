@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import {
   AreaChart,
   Area,
@@ -58,6 +59,7 @@ function OverviewSkeleton() {
 }
 
 export default function ResearchOverview() {
+  const navigate = useNavigate();
   const { data: overview, loading: loadingOverview, error: errOverview, refetch } = useFetch<OverviewData>("/api/research/overview");
   const { data: meshTerms, loading: loadingMesh } = useFetch<MeshTerm[]>("/api/research/mesh-terms?limit=20");
 
@@ -181,11 +183,12 @@ export default function ResearchOverview() {
         </h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {(meshTerms ?? []).map((term) => {
-            const pct = Math.max((term.article_count / maxMeshCount) * 100, 8);
+            const pct = Math.max(((term.article_count ?? 0) / maxMeshCount) * 100, 8);
             return (
-              <div
+              <button
                 key={term.mesh_term}
-                className="group relative overflow-hidden rounded-lg border bg-gray-50 px-3 py-2.5 transition-colors hover:border-meridian-300 hover:bg-meridian-50"
+                onClick={() => navigate(`/research/paper-browser?search=${encodeURIComponent(term.mesh_term)}`)}
+                className="group relative overflow-hidden rounded-lg border bg-gray-50 px-3 py-2.5 text-left transition-colors hover:border-meridian-300 hover:bg-meridian-50"
               >
                 <div
                   className="absolute inset-y-0 left-0 bg-meridian-200/40 transition-all group-hover:bg-meridian-300/40"
@@ -196,10 +199,10 @@ export default function ResearchOverview() {
                     {term.mesh_term}
                   </span>
                   <span className="ml-2 flex-shrink-0 text-xs text-gray-500">
-                    {term.article_count}
+                    {term.article_count} &rarr;
                   </span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
